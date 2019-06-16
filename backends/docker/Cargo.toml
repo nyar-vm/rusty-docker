@@ -1,0 +1,18 @@
+[package]
+name = "docker"
+publish = false
+version = "0.0.0"
+authors = ["Aster <192607617@qq.com>"]
+description = "..."
+repository = "https://github.com/oovm/docker"
+documentation = "https://docs.rs/docker"
+readme = "Readme.md"
+license = "MPL-2.0"
+edition = "2021"
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
+default = []
