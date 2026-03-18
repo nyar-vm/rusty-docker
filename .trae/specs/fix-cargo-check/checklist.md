@@ -1,8 +1,0 @@
-- [ ] 检查 docker-runtime 模块是否无错误
-- [ ] 检查 kubernetes-tools 模块是否无错误
-- [ ] 检查 docker-tools 模块是否无错误
-- [ ] 检查 docker-tools 模块是否无警告
-- [ ] 检查 kubernetes-tools 模块是否无警告
-- [ ] 检查其他模块是否无警告
-- [ ] 执行 cargo check 命令，确保所有模块无错误和警告
-- [ ] 执行 cargo build 命令，确保代码编译通过
