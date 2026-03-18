@@ -1,0 +1,23 @@
+[package]
+name = "docker-runtime"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Docker runtime management"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-runtime"
+categories = ["development-tools"]
+tags = ["docker", "runtime", "rust"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+docker-types = { workspace = true }
+docker-storage = { workspace = true }
+docker-network = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bollard = { workspace = true }
+tokio = { workspace = true }
+futures-util = { workspace = true }

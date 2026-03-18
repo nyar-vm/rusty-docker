@@ -1,0 +1,22 @@
+[package]
+name = "docker-image2" # name `docker-image` had been squatted
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Docker image management"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-image"
+categories = ["development-tools"]
+tags = ["docker", "image", "rust"]
+
+[lib]
+name = "docker_image"
+
+[dependencies]
+docker-types = { workspace = true }
+docker-registry = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+uuid = { workspace = true }

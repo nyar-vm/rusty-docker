@@ -1,0 +1,30 @@
+[package]
+name = "docker-etcd"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Rust implementation of etcd server"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-etcd"
+categories = ["development-tools"]
+tags = ["etcd", "docker", "rust"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "etcd-server"
+path = "src/bin/server.rs"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+bytes = { workspace = true }
+hashbrown = { workspace = true }
+time = { workspace = true }
+base64 = { workspace = true }
+docker-types = { workspace = true }

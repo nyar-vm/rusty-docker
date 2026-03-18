@@ -1,0 +1,243 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+
+jobs:
+    release:
+        name: Package and Release
+        needs: [rust-check, rust-test]
+        strategy:
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@nightly
+
+            - name: Cache cargo registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-release-
+
+            - name: Build docker-tools
+              run: cargo build --release -p docker-tools
+
+            - name: Build kubernetes-tools
+              run: cargo build --release -p kubernetes-tools
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '18'
+                  cache: 'pnpm'
+
+            - name: Install pnpm
+              run: npm install -g pnpm
+
+            - name: Install frontend dependencies
+              run: pnpm install
+              working-directory: ./frontends/docker-crab-h5
+
+            - name: Build docker-crab-desktop
+              run: cargo build --release -p oh-my-crab
+
+            - name: Package docker-tools (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  7z a docker-tools-${{ github.ref_name }}-windows-x86_64.zip docker.exe docker-compose.exe dockerd.exe podman.exe docker-buildx.exe docker-credential-helpers.exe docker-swarm.exe docker-mcp.exe containerd.exe runc.exe
+                  mv docker-tools-${{ github.ref_name }}-windows-x86_64.zip ../..
+
+            - name: Package kubernetes-tools (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  7z a kubernetes-tools-${{ github.ref_name }}-windows-x86_64.zip kube-apiserver.exe kube-controller-manager.exe kube-proxy.exe kube-scheduler.exe kubeadm.exe kubectl.exe kustomize.exe helm.exe
+                  mv kubernetes-tools-${{ github.ref_name }}-windows-x86_64.zip ../..
+
+            - name: Package docker-crab-desktop (Windows)
+              if: matrix.os == 'windows-latest'
+              shell: bash
+              run: |
+                  cd frontends/docker-crab-desktop
+                  cargo tauri build
+                  cd target/release/dist
+                  7z a docker-crab-desktop-${{ github.ref_name }}-windows-x86_64.zip *.exe
+                  mv docker-crab-desktop-${{ github.ref_name }}-windows-x86_64.zip ../../../..
+
+            - name: Package docker-crab-desktop (macOS)
+              if: matrix.os == 'macos-latest'
+              shell: bash
+              run: |
+                  cd frontends/docker-crab-desktop
+                  cargo tauri build
+                  cd target/release/dist
+                  tar -czf docker-crab-desktop-${{ github.ref_name }}-darwin-x86_64.tar.gz *.app
+                  mv docker-crab-desktop-${{ github.ref_name }}-darwin-x86_64.tar.gz ../../../..
+
+            - name: Package docker-crab-desktop (Linux)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
+              run: |
+                  cd frontends/docker-crab-desktop
+                  cargo tauri build
+                  cd target/release/dist
+                  tar -czf docker-crab-desktop-${{ github.ref_name }}-linux-x86_64.tar.gz *.AppImage
+                  mv docker-crab-desktop-${{ github.ref_name }}-linux-x86_64.tar.gz ../../../..
+
+            - name: Package docker-tools (macOS)
+              if: matrix.os == 'macos-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  chmod +x docker docker-compose dockerd podman docker-buildx docker-credential-helpers docker-swarm docker-mcp containerd runc
+                  tar -czf docker-tools-${{ github.ref_name }}-darwin-x86_64.tar.gz docker docker-compose dockerd podman docker-buildx docker-credential-helpers docker-swarm docker-mcp containerd runc
+                  mv docker-tools-${{ github.ref_name }}-darwin-x86_64.tar.gz ../..
+
+            - name: Package kubernetes-tools (macOS)
+              if: matrix.os == 'macos-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  chmod +x kube-apiserver kube-controller-manager kube-proxy kube-scheduler kubeadm kubectl kustomize helm
+                  tar -czf kubernetes-tools-${{ github.ref_name }}-darwin-x86_64.tar.gz kube-apiserver kube-controller-manager kube-proxy kube-scheduler kubeadm kubectl kustomize helm
+                  mv kubernetes-tools-${{ github.ref_name }}-darwin-x86_64.tar.gz ../..
+
+            - name: Package docker-tools (Linux)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  chmod +x docker docker-compose dockerd podman docker-buildx docker-credential-helpers docker-swarm docker-mcp containerd runc
+                  tar -czf docker-tools-${{ github.ref_name }}-linux-x86_64.tar.gz docker docker-compose dockerd podman docker-buildx docker-credential-helpers docker-swarm docker-mcp containerd runc
+                  mv docker-tools-${{ github.ref_name }}-linux-x86_64.tar.gz ../..
+
+            - name: Package kubernetes-tools (Linux)
+              if: matrix.os == 'ubuntu-latest'
+              shell: bash
+              run: |
+                  cd target/release
+                  chmod +x kube-apiserver kube-controller-manager kube-proxy kube-scheduler kubeadm kubectl kustomize helm
+                  tar -czf kubernetes-tools-${{ github.ref_name }}-linux-x86_64.tar.gz kube-apiserver kube-controller-manager kube-proxy kube-scheduler kubeadm kubectl kustomize helm
+                  mv kubernetes-tools-${{ github.ref_name }}-linux-x86_64.tar.gz ../..
+
+            - name: Upload docker-tools artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: docker-tools-${{ matrix.os }}
+                  path: docker-tools-${{ github.ref_name }}-*.zip docker-tools-${{ github.ref_name }}-*.tar.gz
+
+            - name: Upload kubernetes-tools artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: kubernetes-tools-${{ matrix.os }}
+                  path: kubernetes-tools-${{ github.ref_name }}-*.zip kubernetes-tools-${{ github.ref_name }}-*.tar.gz
+
+            - name: Upload docker-crab-desktop artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: docker-crab-desktop-${{ matrix.os }}
+                  path: docker-crab-desktop-${{ github.ref_name }}-*.zip docker-crab-desktop-${{ github.ref_name }}-*.tar.gz
+
+            - name: Upload release assets
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      docker-tools-${{ github.ref_name }}-*.zip
+                      docker-tools-${{ github.ref_name }}-*.tar.gz
+                      kubernetes-tools-${{ github.ref_name }}-*.zip
+                      kubernetes-tools-${{ github.ref_name }}-*.tar.gz
+                      docker-crab-desktop-${{ github.ref_name }}-*.zip
+                      docker-crab-desktop-${{ github.ref_name }}-*.tar.gz
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    rust-check:
+        name: Rust Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@nightly
+              with:
+                  components: rustfmt, clippy
+
+            - name: Cache cargo registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-
+
+            - name: Check formatting
+              run: cargo fmt --all -- --check
+
+            - name: Run clippy
+              run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+            - name: Check compilation
+              run: cargo check --workspace --all-targets --all-features
+
+    rust-test:
+        name: Rust Test
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, windows-latest, macos-latest]
+                feature: [no-default, default, all]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@nightly
+
+            - name: Cache cargo registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-
+
+            - name: Run tests (no-default features)
+              if: matrix.feature == 'no-default'
+              run: cargo test --workspace --no-default-features
+
+            - name: Run tests (default features)
+              if: matrix.feature == 'default'
+              run: cargo test --workspace
+
+            - name: Run tests (all features)
+              if: matrix.feature == 'all'
+              run: cargo test --workspace --all-features

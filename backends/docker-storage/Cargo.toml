@@ -1,0 +1,15 @@
+[package]
+name = "docker-storage"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Docker storage management"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-storage"
+categories = ["development-tools"]
+tags = ["docker", "storage", "rust"]
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+docker-types = { workspace = true }

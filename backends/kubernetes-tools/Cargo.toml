@@ -1,0 +1,62 @@
+[package]
+name = "kubernetes-tools"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Kubernetes tools, including kube-apiserver, kube-controller-manager, kube-proxy, kube-scheduler, kubeadm, kubectl and kustomize"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/kubernetes-tools"
+categories = ["development-tools"]
+tags = ["kubernetes", "tools", "rust"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "kube-apiserver"
+path = "bin/kube-apiserver.rs"
+
+[[bin]]
+name = "kube-controller-manager"
+path = "bin/kube-controller-manager.rs"
+
+[[bin]]
+name = "kube-proxy"
+path = "bin/kube-proxy.rs"
+
+[[bin]]
+name = "kube-scheduler"
+path = "bin/kube-scheduler.rs"
+
+[[bin]]
+name = "kubeadm"
+path = "bin/kubeadm.rs"
+
+[[bin]]
+name = "kubectl"
+path = "bin/kubectl.rs"
+
+[[bin]]
+name = "kustomize"
+path = "bin/kustomize.rs"
+
+[[bin]]
+name = "helm"
+path = "bin/helm.rs"
+
+[dependencies]
+docker-types = { workspace = true }
+docker-network = { workspace = true }
+docker = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+yaml-rust = { workspace = true }
+wae-request = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+serde_yaml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+retry = { workspace = true }

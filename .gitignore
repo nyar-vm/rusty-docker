@@ -12,3 +12,15 @@ time-travel.*
 # Rust
 target/
 Cargo.lock
+bar-chart.svg
+
+# Local Cargo config
+.cargo/config.toml
+
+
+# Node
+node_modules/
+cache/
+dist/
+*.log
+*.txt

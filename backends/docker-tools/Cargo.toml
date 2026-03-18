@@ -1,0 +1,76 @@
+[package]
+name = "docker-tools"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Docker tools, including docker, docker-compose and dockerd"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-tools"
+categories = ["development-tools"]
+tags = ["docker", "tools", "rust"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "docker"
+path = "bin/docker.rs"
+
+[[bin]]
+name = "docker-compose"
+path = "bin/docker-compose.rs"
+
+[[bin]]
+name = "dockerd"
+path = "bin/dockerd.rs"
+
+[[bin]]
+name = "podman"
+path = "bin/podman.rs"
+
+[[bin]]
+name = "docker-buildx"
+path = "bin/docker-buildx.rs"
+
+[[bin]]
+name = "docker-credential-helpers"
+path = "bin/docker-credential-helpers.rs"
+
+[[bin]]
+name = "docker-swarm"
+path = "bin/docker-swarm.rs"
+
+[[bin]]
+name = "docker-mcp"
+path = "bin/docker-mcp.rs"
+
+[[bin]]
+name = "containerd"
+path = "bin/containerd.rs"
+
+[[bin]]
+name = "runc"
+path = "bin/runc.rs"
+
+[dependencies]
+docker-types = { workspace = true }
+docker-network = { workspace = true }
+docker = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+yaml-rust = { workspace = true }
+wae-request = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+serde_yaml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+retry = { workspace = true }
+bollard = { workspace = true }
+tar = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+uuid = { workspace = true }
+base64 = { workspace = true }

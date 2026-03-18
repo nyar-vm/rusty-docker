@@ -1,0 +1,27 @@
+[package]
+name = "oh-my-crab"
+publish = false
+version = "0.0.0"
+description = "OpenCrab GUI client"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-shell = { workspace = true }
+tauri-plugin-fs = { workspace = true }
+docker = { workspace = true }
+docker-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

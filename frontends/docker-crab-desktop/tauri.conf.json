@@ -1,0 +1,31 @@
+{
+    "$schema": "https://schema.tauri.app/config/2.0.0",
+    "productName": "Oh My Crab",
+    "version": "0.1.0",
+    "identifier": "com.opencrab.oh-my-crab",
+    "build": {
+        "beforeDevCommand": "cd ../docker-crab-h5 && pnpm run dev",
+        "beforeBuildCommand": "cd ../docker-crab-h5 && pnpm run build",
+        "devUrl": "http://localhost:5173",
+        "frontendDist": "../docker-crab-h5/dist"
+    },
+    "app": {
+        "windows": [
+            {
+                "title": "Oh My Crab",
+                "width": 1200,
+                "height": 800,
+                "resizable": true,
+                "fullscreen": false
+            }
+        ],
+        "security": {
+            "csp": null
+        }
+    },
+    "bundle": {
+        "active": true,
+        "targets": "all",
+        "icon": []
+    }
+}

@@ -1,0 +1,35 @@
+[package]
+name = "kubernetes2" # name `kubernetes` had been squatted
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Lightweight Kubernetes toolset implemented in Rust"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/kubernetes"
+categories = ["development-tools"]
+tags = ["kubernetes", "docker", "rust"]
+
+[lib]
+name = "kubernetes"
+
+[dependencies]
+docker-types = { workspace = true }
+docker-network = { workspace = true }
+docker = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+yaml-rust = { workspace = true }
+wae-request = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+serde_yaml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+retry = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }

@@ -1,12 +1,87 @@
 [workspace]
-members = ["backends/*"]
-default-members = [
-    "backends/docker",
+resolver = "2"
+members = [
+    "backends/*",
+    "frontends/docker-crab-desktop",
 ]
-exclude = [
-    "backends/.DS_Store",
+default-members = [
+    "backends/*",
 ]
 
-[profile.release]
-lto = true
-panic = "abort"
+[workspace.package]
+version = "0.0.2"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/nyar-vm/rusty-docker"
+repository = "https://github.com/nyar-vm/rusty-docker"
+authors = ["docker@nyar.org"]
+
+[workspace.dependencies]
+tokio = { version = "1.50.0", features = ["full"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+bollard = "0.20.2"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "chrono", "json", "uuid", "macros"] }
+async-trait = "0.1.89"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+uuid = { version = "1.22.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.44", features = ["serde"] }
+
+futures = "0.3.32"
+futures-util = "0.3.32"
+once_cell = "1.21.4"
+config = "0.15.21"
+dotenvy = "0.15.7"
+dirs = "6.0.0"
+rusqlite = "0.39.0"
+blake3 = "1.8.3"
+hex = "0.4.3"
+redis = "1.0.5"
+clap = { version = "4.6.0", features = ["derive"] }
+yaml-rust = "0.4.5"
+nix = "0.31.2"
+libc = "0.2.183"
+tokio-test = "0.4.5"
+tempfile = "3.27.0"
+linked-hash-map = "0.5.6"
+base64 = "0.22.1"
+time = "0.3.47"
+bytes = "1.11.1"
+hashbrown = "0.16.1"
+toml = "1.0.6"
+retry = "2.2.0"
+serde_yaml = "0.9.34"
+sha2 = "0.10.9"
+native-tls = "0.2.18"
+num_cpus = "1.17.0"
+hyper = "1.8.1"
+rand = "0.10.0"
+tar = "0.4.40"
+tauri = { version = "2.0", features = [] }
+tauri-build = { version = "2.0", features = [] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-fs = "2.0"
+
+docker = { path = "backends/docker", version = "0.0.2", package = "docker2"}
+kubernetes = { path = "backends/kubernetes", version = "0.0.2", package = "kubernetes2"}
+docker-types = { path = "backends/docker-types", version = "0.0.2" }
+docker-storage = { path = "backends/docker-storage", version = "0.0.2" }
+docker-network = { path = "backends/docker-network", version = "0.0.2" }
+docker-runtime = { path = "backends/docker-runtime", version = "0.0.2" }
+docker-registry = { path = "backends/docker-registry", version = "0.0.2", package = "docker-registry2"}
+docker-image = { path = "backends/docker-image", version = "0.0.2", package = "docker-image2"}
+# Wae services
+wae-server = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-request = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-config = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-database = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-cache = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-https = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-effect = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-queue = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-event = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-storage = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+wae-types = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
+# Oak parsers
+oak-dockerfile = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.7" }

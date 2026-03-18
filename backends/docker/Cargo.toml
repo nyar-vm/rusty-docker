@@ -1,18 +1,37 @@
 [package]
+name = "docker2" # name `docker` had been squatted
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+authors = { workspace = true }
+description = "Lightweight container runtime implemented in Rust"
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker"
+categories = ["development-tools"]
+tags = ["docker", "container", "runtime", "rust"]
+
+[lib]
 name = "docker"
-publish = false
-version = "0.0.0"
-authors = ["Aster <192607617@qq.com>"]
-description = "..."
-repository = "https://github.com/oovm/docker"
-documentation = "https://docs.rs/docker"
-readme = "Readme.md"
-license = "MPL-2.0"
-edition = "2021"
 
 [dependencies]
+docker-types = { workspace = true }
+docker-network = { workspace = true }
+docker-registry = { workspace = true }
+docker-image = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+nix = { workspace = true }
+libc = { workspace = true }
+futures-util = { workspace = true }
+
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
 
 [dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
 
 [features]
 default = []
+nightly = []

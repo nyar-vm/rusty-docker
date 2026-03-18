@@ -1,0 +1,15 @@
+[package]
+name = "docker-types"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+description = "Docker shared data structures"
+authors = { workspace = true }
+repository = "https://github.com/nyar-vm/rusty-docker/tree/main/backends/docker-types"
+categories = ["development-tools"]
+tags = ["docker", "types", "rust"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
