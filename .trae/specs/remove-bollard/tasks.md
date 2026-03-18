@@ -11,7 +11,7 @@
   - `programmatic` TR-1.1：检查 Cargo.toml 文件中是否不再包含 bollard 依赖
 - **备注**：这是第一步，必须先执行
 
-## [ ] 任务 2：移除 docker-network 模块中的 bollard 引用
+## [x] 任务 2：移除 docker-network 模块中的 bollard 引用
 - **优先级**：P0
 - **依赖**：任务 1
 - **描述**：
@@ -24,7 +24,7 @@
   - `programmatic` TR-2.2：运行网络管理相关的测试
 - **备注**：需要实现 Linux、Windows 和 macOS 平台的网络管理
 
-## [ ] 任务 3：移除 docker-runtime 模块中的 bollard 引用
+## [x] 任务 3：移除 docker-runtime 模块中的 bollard 引用
 - **优先级**：P0
 - **依赖**：任务 1
 - **描述**：
@@ -38,7 +38,7 @@
 - **备注**：需要实现 Linux、Windows 和 macOS 平台的运行时管理
 
 ## [ ] 任务 4：移除 docker-tools 模块中的 bollard 引用
-- **优先级**：P1
+- **优先级**：P0
 - **依赖**：任务 1
 - **描述**：
   - 移除 docker-tools 模块中所有对 bollard 的引用
@@ -48,7 +48,7 @@
 - **测试需求**：
   - `programmatic` TR-4.1：检查 docker-tools 模块中是否不再包含 bollard 引用
   - `programmatic` TR-4.2：运行工具相关的测试
-- **备注**：docker-tools 模块可能使用 bollard 进行一些工具功能
+- **备注**：docker-tools 模块使用 bollard 进行镜像管理功能
 
 ## [ ] 任务 5：验证所有功能正常
 - **优先级**：P0

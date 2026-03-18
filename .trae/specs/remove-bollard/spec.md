@@ -17,8 +17,8 @@
 - 不影响其他依赖库的使用
 
 ## 背景与上下文
-- 项目当前使用 bollard 0.20.2 作为 Docker API 客户端
-- bollard 被用于 docker-network、docker-runtime 和 docker-tools 模块
+- 项目当前在 docker-tools 模块中使用 bollard 作为 Docker API 客户端
+- docker-network 和 docker-runtime 模块已经移除了 bollard 引用，实现了自主研发的方案
 - 移除 bollard 可以减少外部依赖，提高代码可控性
 
 ## 功能需求

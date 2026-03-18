@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path::Path;
 use tokio::fs::read_to_string;
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse};
+use oak_yaml;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -469,7 +470,7 @@ impl K8sClient {
             .join("config");
 
         let kubeconfig_content = read_to_string(kubeconfig_path).await?;
-        let kubeconfig: KubeConfig = serde_yaml::from_str(&kubeconfig_content)?;
+        let kubeconfig: KubeConfig = oak_yaml::from_str(&kubeconfig_content)?;
 
         // 获取当前上下文
         let current_context = kubeconfig
@@ -1387,7 +1388,7 @@ impl KubeConfig {
             .join("config");
 
         let kubeconfig_content = read_to_string(kubeconfig_path).await?;
-        let kubeconfig: KubeConfig = serde_yaml::from_str(&kubeconfig_content)?;
+        let kubeconfig: KubeConfig = oak_yaml::from_str(&kubeconfig_content)?;
 
         Ok(kubeconfig)
     }

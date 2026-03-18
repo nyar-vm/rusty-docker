@@ -4,14 +4,8 @@
 
 #![warn(missing_docs)]
 
-use bollard::Docker as BollardDocker;
-use bollard::query_parameters::{
-    BuildImageOptions, CreateImageOptions, InspectImageOptions, ListImagesOptions,
-    RemoveImageOptions,
-};
 use clap::{Arg, ArgAction, Command};
 use docker_types::{DockerError, ImageInfo};
-use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;

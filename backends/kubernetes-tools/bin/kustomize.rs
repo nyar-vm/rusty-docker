@@ -204,7 +204,7 @@ fn read_kustomization(path: Option<&str>) -> Result<Kustomization, String> {
 /// 写入 kustomization.yaml 文件
 fn write_kustomization(kustomization: &Kustomization, path: Option<&str>) -> Result<(), String> {
     let kustomization_path = get_kustomization_path(path);
-    let yaml = oak_yaml::to_string(kustomization).map_err(|e| e.to_string())?
+    let yaml = oak_yaml::to_string(kustomization).map_err(|e| e.to_string())?;
     fs::write(&kustomization_path, yaml).map_err(|e| e.to_string())
 }
 
@@ -559,7 +559,7 @@ async fn main() {
                 match read_kustomization(path.as_deref()) {
                     Ok(kustomization) => {
                         println!("Config content:");
-                        let yaml = serde_yaml::to_string(&kustomization)
+                        let yaml = oak_yaml::to_string(&kustomization)
                             .expect("无法序列化 kustomization");
                         println!("{}", yaml);
                     }
