@@ -1,6 +1,6 @@
 use super::{Container, ContainerManager, ContainerStatus, Result, RuntimeManager};
 use docker_types::DockerError;
-use rand::Rng;
+use rand;
 use std::{collections::HashMap, sync::RwLock};
 
 pub struct WindowsContainerManager {
@@ -31,8 +31,8 @@ impl ContainerManager for WindowsContainerManager {
         read_only: bool,
     ) -> Result<Container> {
         // 生成容器 ID
-        let mut rng = rand::thread_rng();
-        let container_id: String = (0..32).map(|_| rng.sample(rand::distributions::Alphanumeric) as char).collect();
+        let mut rng = thread_rng();
+        let container_id: String = (0..32).map(|_| rng.sample(Alphanumeric) as char).collect();
 
         // 创建容器
         let container = Container {

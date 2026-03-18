@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use oak_yaml::parse;
 use serde_json::{Value, to_string_pretty};
+use serde_yaml;
 use std::{collections::HashMap, error::Error, fs::File, io::Read, path::Path};
 use tokio::fs::read_to_string;
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse};
@@ -629,13 +629,9 @@ impl K8sClient {
 async fn load_resource_from_file(file_path: &str) -> Result<K8sResource, Box<dyn Error>> {
     let content = read_to_string(file_path).await?;
 
-    // 尝试使用 oak-yaml 解析 YAML
-    match parse(&content) {
-        Ok(root) => {
-            // 使用 oak-yaml 的 serde 支持进行反序列化
-            let resource: K8sResource = serde::de::Deserialize::deserialize(root)?;
-            Ok(resource)
-        }
+    // 尝试使用 serde_yaml 解析 YAML
+    match serde_yaml::from_str(&content) {
+        Ok(resource) => Ok(resource),
         Err(e) => Err(format!("Failed to parse resource file: {}", e).into()),
     }
 }
@@ -1236,16 +1232,9 @@ impl KubeConfig {
         // 读取文件内容
         let content = read_to_string(kubeconfig_path).await?;
 
-        // 使用 oak-yaml 解析 YAML
-        match parse(&content) {
-            Ok(root) => {
-                // 使用 oak-yaml 的 serde 支持进行反序列化
-                // 这里需要实现从 oak-yaml AST 到 KubeConfig 的转换
-                // 由于 oak-yaml 的 serde 支持可能需要特定的实现，我们暂时使用一个简单的方法
-                // 后续可以改进为直接使用 oak-yaml 的 serde 功能
-                let kubeconfig: KubeConfig = serde::de::Deserialize::deserialize(root)?;
-                Ok(kubeconfig)
-            }
+        // 使用 serde_yaml 解析 YAML
+        match serde_yaml::from_str(&content) {
+            Ok(kubeconfig) => Ok(kubeconfig),
             Err(e) => Err(format!("Failed to parse kubeconfig: {}", e).into()),
         }
     }

@@ -58,4 +58,4 @@ dirs = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 retry = { workspace = true }
-oak-yaml = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.7", features = ["serde"] }
+oak-yaml = { workspace = true }

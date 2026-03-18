@@ -2,6 +2,7 @@ use chrono;
 use clap::{Parser, Subcommand};
 use dirs;
 use serde::{Deserialize, Serialize};
+use serde_yaml;
 use std::{fs, path::Path};
 use tokio;
 
@@ -222,16 +223,60 @@ fn read_repositories() -> Result<HelmRepositories, String> {
     if !Path::new(&repos_file).exists() {
         return Err("仓库配置文件不存在".to_string());
     }
-    // Mock 实现，返回默认配置
-    Ok(HelmRepositories { repositories: vec![] })
+    
+    // 读取文件内容
+    let content = match fs::read_to_string(&repos_file) {
+        Ok(content) => content,
+        Err(e) => return Err(format!("无法读取文件: {}", e)),
+    };
+    
+    // 使用 serde_yaml 解析 YAML
+    match serde_yaml::from_str(&content) {
+        Ok(repos) => Ok(repos),
+        Err(e) => Err(format!("解析 YAML 失败: {}", e)),
+    }
 }
 
 /// 写入 Helm 仓库配置
 fn write_repositories(repos: &HelmRepositories) -> Result<(), String> {
     let repos_file = get_repositories_file();
-    // Mock 实现，创建一个简单的仓库配置文件
-    let yaml = r#"repositories: []
-"#;
+    
+    // 构建 YAML 内容
+    let mut yaml = "repositories:\n".to_string();
+    
+    for repo in &repos.repositories {
+        yaml.push_str(&format!("- name: {}\n", repo.name));
+        yaml.push_str(&format!("  url: {}\n", repo.url));
+        
+        if let Some(cert_file) = &repo.cert_file {
+            yaml.push_str(&format!("  certFile: {}\n", cert_file));
+        }
+        
+        if let Some(key_file) = &repo.key_file {
+            yaml.push_str(&format!("  keyFile: {}\n", key_file));
+        }
+        
+        if let Some(ca_file) = &repo.ca_file {
+            yaml.push_str(&format!("  caFile: {}\n", ca_file));
+        }
+        
+        if let Some(insecure_skip_tls_verify) = &repo.insecure_skip_tls_verify {
+            yaml.push_str(&format!("  insecureSkipTLSVerify: {}\n", insecure_skip_tls_verify));
+        }
+        
+        if let Some(username) = &repo.username {
+            yaml.push_str(&format!("  username: {}\n", username));
+        }
+        
+        if let Some(password) = &repo.password {
+            yaml.push_str(&format!("  password: {}\n", password));
+        }
+        
+        if let Some(bearer_token) = &repo.bearer_token {
+            yaml.push_str(&format!("  bearerToken: {}\n", bearer_token));
+        }
+    }
+    
     fs::write(&repos_file, yaml).map_err(|e| format!("无法写入仓库配置文件: {}", e))
 }
 

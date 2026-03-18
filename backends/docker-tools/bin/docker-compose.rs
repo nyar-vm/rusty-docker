@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use docker::Docker;
 use docker_types::{DockerError, Result};
+use oak_yaml::parse;
 use retry::{delay::Exponential, retry};
 use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc};
 use tokio::sync::Mutex;
@@ -635,8 +636,22 @@ fn load_single_compose_file(path: &str) -> Result<()> {
         return Err(DockerError::io_error("open file", format!("File not found: {}", path)));
     }
 
-    // Mock 实现，直接返回成功
-    Ok(())
+    // 读取文件内容
+    let mut file = File::open(path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+
+    // 使用 oak-yaml 解析 YAML
+    match parse(&content) {
+        Ok(root) => {
+            // 解析成功，这里可以添加进一步的处理逻辑
+            info!("Successfully parsed compose file: {}", path);
+            Ok(())
+        }
+        Err(e) => {
+            Err(DockerError::invalid_params("compose_file", format!("Failed to parse compose file: {}", e)))
+        }
+    }
 }
 
 /// 合并多个 Compose 文件

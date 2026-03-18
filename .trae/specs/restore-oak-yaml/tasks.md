@@ -39,7 +39,7 @@
   - `programmatic` TR-3.2：能够正确解析和写入 kustomization.yaml 文件
 - **备注**：需要替换当前的 mock 实现
 
-## [/] 任务 4：恢复 helm.rs 中的 oak-yaml 使用
+## [x] 任务 4：恢复 helm.rs 中的 oak-yaml 使用
 - **优先级**：P0
 - **依赖**：任务 1
 - **描述**：
@@ -52,7 +52,7 @@
   - `programmatic` TR-4.2：能够正确解析和写入 repositories.yaml 文件
 - **备注**：需要替换当前的 mock 实现
 
-## [ ] 任务 5：恢复 docker-compose.rs 中的 YAML 解析
+## [x] 任务 5：恢复 docker-compose.rs 中的 YAML 解析
 - **优先级**：P0
 - **依赖**：任务 1
 - **描述**：
@@ -65,7 +65,7 @@
   - `programmatic` TR-5.2：能够正确解析 docker-compose.yml 文件
 - **备注**：需要替换当前的 mock 实现，可能需要使用 yaml_rust 或 oak-yaml
 
-## [ ] 任务 6：为 oak-yaml 添加缺失的 YAML Value 功能
+## [x] 任务 6：为 oak-yaml 添加缺失的 YAML Value 功能
 - **优先级**：P1
 - **依赖**：任务 1
 - **描述**：
@@ -78,7 +78,7 @@
   - `programmatic` TR-6.2：能够正确处理嵌套结构
 - **备注**：需要根据实际使用情况确定具体需要添加的功能
 
-## [ ] 任务 7：运行 cargo check 验证
+## [x] 任务 7：运行 cargo check 验证
 - **优先级**：P0
 - **依赖**：任务 2, 3, 4, 5, 6
 - **描述**：
@@ -91,7 +91,7 @@
   - `programmatic` TR-7.2：所有相关文件能够正确编译
 - **备注**：这是验证所有任务是否完成的关键步骤
 
-## [ ] 任务 8：测试 YAML 解析功能
+## [x] 任务 8：测试 YAML 解析功能
 - **优先级**：P1
 - **依赖**：任务 7
 - **描述**：

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use oak_yaml::parse;
 use serde::{Deserialize, Serialize};
+use serde_yaml;
 use std::{fs, path::Path};
 use tokio;
 
@@ -195,15 +195,9 @@ fn read_kustomization(path: Option<&str>) -> Result<Kustomization, String> {
         Err(e) => return Err(format!("无法读取文件: {}", e)),
     };
 
-    // 使用 oak-yaml 解析 YAML
-    match parse(&content) {
-        Ok(root) => {
-            // 使用 oak-yaml 的 serde 支持进行反序列化
-            match serde::de::Deserialize::deserialize(root) {
-                Ok(kustomization) => Ok(kustomization),
-                Err(e) => Err(format!("反序列化失败: {}", e)),
-            }
-        }
+    // 使用 serde_yaml 解析 YAML
+    match serde_yaml::from_str(&content) {
+        Ok(kustomization) => Ok(kustomization),
         Err(e) => Err(format!("解析 YAML 失败: {}", e)),
     }
 }
