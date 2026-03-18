@@ -3,12 +3,11 @@
 //! 负责将Pod调度到合适的节点上
 
 use clap::Parser;
-use docker_tools::create_base_command;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, sleep};
-use wae_request::HttpClient;
+use chrono;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -96,7 +95,6 @@ struct Toleration {
 
 /// 调度器状态
 struct SchedulerState {
-    api_client: HttpClient,
     master_url: String,
     scheduler_name: String,
     leader_election: bool,
@@ -108,7 +106,6 @@ struct SchedulerState {
 impl SchedulerState {
     fn new(master: &str, scheduler_name: &str, leader_elect: bool, sync_period: u64) -> Self {
         Self {
-            api_client: HttpClient::default(),
             master_url: master.to_string(),
             scheduler_name: scheduler_name.to_string(),
             leader_election: leader_elect,
@@ -499,7 +496,8 @@ impl SchedulerState {
         // 然后更新pod和绑定到节点
         for (i, node) in scheduled_pods {
             let pod = &mut self.pending_pods[i];
-            println!("Scheduled pod {}/{}", pod.namespace, pod.name, node);
+            println!("Scheduled pod {}/{}" , pod.namespace, pod.name);
+            println!("  -> Node: {}", node);
             pod.node_name = Some(node.clone());
             
             // 这里应该调用API服务器更新Pod的nodeName字段

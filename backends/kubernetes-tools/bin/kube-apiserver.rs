@@ -3,7 +3,6 @@
 //! 提供Kubernetes集群的RESTful API接口，是集群的核心组件
 
 use clap::Parser;
-use docker_tools::create_base_command;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

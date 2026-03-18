@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::fs;
 use std::path::Path;
-use wae_request::HttpClient;
+use tokio;
+use dirs;
+use chrono;
 
 /// Helm 仓库配置
 #[derive(Debug, Deserialize, Serialize)]
@@ -242,35 +244,27 @@ fn write_repositories(repos: &HelmRepositories) -> Result<(), String> {
 
 /// 从仓库获取 chart 信息
 async fn get_charts_from_repo(repo_url: &str) -> Result<Vec<HelmChart>, String> {
-    let client = HttpClient::default();
-    let index_url = format!("{}/index.yaml", repo_url);
-    match client.get(&index_url).await {
-        Ok(_response) => {
-            // 这里简化处理，实际的 index.yaml 结构更复杂
-            // 这里返回一个模拟的结果
-            Ok(vec![
-                HelmChart {
-                    name: "nginx".to_string(),
-                    version: "1.2.3".to_string(),
-                    description:
-                        "NGINX is a free, open-source, high-performance HTTP server and reverse proxy."
-                            .to_string(),
-                    app_version: "1.21.6".to_string(),
-                    urls: vec![format!("{}/nginx-1.2.3.tgz", repo_url)],
-                },
-                HelmChart {
-                    name: "mysql".to_string(),
-                    version: "8.0.31".to_string(),
-                    description:
-                        "MySQL is a widely used, open-source relational database management system."
-                            .to_string(),
-                    app_version: "8.0.31".to_string(),
-                    urls: vec![format!("{}/mysql-8.0.31.tgz", repo_url)],
-                },
-            ])
-        }
-        Err(e) => Err(format!("Error getting charts from repo: {:?}", e)),
-    }
+    // 模拟实现，直接返回模拟数据
+    Ok(vec![
+        HelmChart {
+            name: "nginx".to_string(),
+            version: "1.2.3".to_string(),
+            description:
+                "NGINX is a free, open-source, high-performance HTTP server and reverse proxy."
+                    .to_string(),
+            app_version: "1.21.6".to_string(),
+            urls: vec![format!("{}/nginx-1.2.3.tgz", repo_url)],
+        },
+        HelmChart {
+            name: "mysql".to_string(),
+            version: "8.0.31".to_string(),
+            description:
+                "MySQL is a widely used, open-source relational database management system."
+                    .to_string(),
+            app_version: "8.0.31".to_string(),
+            urls: vec![format!("{}/mysql-8.0.31.tgz", repo_url)],
+        },
+    ])
 }
 
 #[tokio::main]
@@ -479,9 +473,9 @@ async fn main() {
             println!("Checking Helm release status");
             println!("Release name: {}", name);
             println!("Namespace: {}", namespace);
-            println!("NAME: {}");
+            println!("NAME: {}", name);
             println!("LAST DEPLOYED: 2024-01-01 12:00:00.000000000 +0000 UTC");
-            println!("NAMESPACE: {}");
+            println!("NAMESPACE: {}", namespace);
             println!("STATUS: deployed");
             println!("REVISION: 1");
             println!("TEST SUITE: None");
