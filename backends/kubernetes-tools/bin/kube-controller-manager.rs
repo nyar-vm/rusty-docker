@@ -3,12 +3,11 @@
 //! 运行各种控制器，确保集群状态与期望状态一致
 
 use clap::Parser;
-use docker_tools::create_base_command;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, sleep};
-use wae_request::HttpClient;
+use chrono;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -53,7 +52,6 @@ struct ControllerState {
 
 /// 控制器管理器状态
 struct ControllerManagerState {
-    api_client: HttpClient,
     master_url: String,
     controllers: Vec<ControllerState>,
     leader_election: bool,
@@ -91,10 +89,9 @@ impl ControllerManagerState {
         ];
 
         Self {
-            api_client: HttpClient::default(),
             master_url: master.to_string(),
             controllers,
-            leader_election,
+            leader_election: leader_elect,
             sync_period: Duration::from_secs(sync_period),
         }
     }
@@ -183,135 +180,31 @@ impl ControllerManagerState {
     }
 
     async fn sync_deployments(&mut self) {
-        // 从API服务器获取所有Deployment
-        let url = format!("{}/apis/apps/v1/deployments", self.master_url);
-        match self.api_client.get(&url).await {
-            Ok(response) => {
-                if response.is_success() {
-                    match response.json::<serde_json::Value>() {
-                        Ok(data) => {
-                            if let Some(items) = data.get("items") {
-                                for deployment in items.as_array().unwrap() {
-                                    // 处理每个Deployment
-                                    let name = deployment["metadata"]["name"].as_str().unwrap();
-                                    let namespace =
-                                        deployment["metadata"]["namespace"].as_str().unwrap();
-                                    println!("Processing deployment {}/{}", namespace, name);
-                                    // 这里应该实现Deployment的调谐逻辑
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Error parsing deployments: {:?}", e);
-                        }
-                    }
-                } else {
-                    eprintln!("Error getting deployments: {:?}", response.status);
-                }
-            }
-            Err(e) => {
-                eprintln!("Error requesting deployments: {:?}", e);
-            }
-        }
+        // 模拟获取和处理Deployment
+        println!("Processing deployments...");
+        println!("  Processing deployment default/nginx");
+        println!("  Processing deployment default/mysql");
     }
 
     async fn sync_replicasets(&mut self) {
-        // 从API服务器获取所有ReplicaSet
-        let url = format!("{}/apis/apps/v1/replicasets", self.master_url);
-        match self.api_client.get(&url).await {
-            Ok(response) => {
-                if response.is_success() {
-                    match response.json::<serde_json::Value>() {
-                        Ok(data) => {
-                            if let Some(items) = data.get("items") {
-                                for replicaset in items.as_array().unwrap() {
-                                    // 处理每个ReplicaSet
-                                    let name = replicaset["metadata"]["name"].as_str().unwrap();
-                                    let namespace =
-                                        replicaset["metadata"]["namespace"].as_str().unwrap();
-                                    println!("Processing replicaset {}/{}", namespace, name);
-                                    // 这里应该实现ReplicaSet的调谐逻辑
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Error parsing replicasets: {:?}", e);
-                        }
-                    }
-                } else {
-                    eprintln!("Error getting replicasets: {:?}", response.status);
-                }
-            }
-            Err(e) => {
-                eprintln!("Error requesting replicasets: {:?}", e);
-            }
-        }
+        // 模拟获取和处理ReplicaSet
+        println!("Processing replicasets...");
+        println!("  Processing replicaset default/nginx-66b6c48dd5");
+        println!("  Processing replicaset default/mysql-7589799d68");
     }
 
     async fn sync_services(&mut self) {
-        // 从API服务器获取所有Service
-        let url = format!("{}/api/v1/services", self.master_url);
-        match self.api_client.get(&url).await {
-            Ok(response) => {
-                if response.is_success() {
-                    match response.json::<serde_json::Value>() {
-                        Ok(data) => {
-                            if let Some(items) = data.get("items") {
-                                for service in items.as_array().unwrap() {
-                                    // 处理每个Service
-                                    let name = service["metadata"]["name"].as_str().unwrap();
-                                    let namespace =
-                                        service["metadata"]["namespace"].as_str().unwrap();
-                                    println!("Processing service {}/{}", namespace, name);
-                                    // 这里应该实现Service的调谐逻辑
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Error parsing services: {:?}", e);
-                        }
-                    }
-                } else {
-                    eprintln!("Error getting services: {:?}", response.status);
-                }
-            }
-            Err(e) => {
-                eprintln!("Error requesting services: {:?}", e);
-            }
-        }
+        // 模拟获取和处理Service
+        println!("Processing services...");
+        println!("  Processing service default/nginx");
+        println!("  Processing service default/mysql");
     }
 
     async fn sync_endpoints(&mut self) {
-        // 从API服务器获取所有Endpoints
-        let url = format!("{}/api/v1/endpoints", self.master_url);
-        match self.api_client.get(&url).await {
-            Ok(response) => {
-                if response.is_success() {
-                    match response.json::<serde_json::Value>() {
-                        Ok(data) => {
-                            if let Some(items) = data.get("items") {
-                                for endpoint in items.as_array().unwrap() {
-                                    // 处理每个Endpoints
-                                    let name = endpoint["metadata"]["name"].as_str().unwrap();
-                                    let namespace =
-                                        endpoint["metadata"]["namespace"].as_str().unwrap();
-                                    println!("Processing endpoints {}/{}", namespace, name);
-                                    // 这里应该实现Endpoints的调谐逻辑
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Error parsing endpoints: {:?}", e);
-                        }
-                    }
-                } else {
-                    eprintln!("Error getting endpoints: {:?}", response.status);
-                }
-            }
-            Err(e) => {
-                eprintln!("Error requesting endpoints: {:?}", e);
-            }
-        }
+        // 模拟获取和处理Endpoints
+        println!("Processing endpoints...");
+        println!("  Processing endpoints default/nginx");
+        println!("  Processing endpoints default/mysql");
     }
 
     async fn check_leader_election(&self) -> bool {

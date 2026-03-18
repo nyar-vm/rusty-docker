@@ -3,12 +3,10 @@
 //! 维护节点上的网络规则，实现服务的负载均衡和网络代理
 
 use clap::Parser;
-use docker_tools::create_base_command;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, sleep};
-use wae_request::HttpClient;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -65,7 +63,6 @@ struct Endpoint {
 
 /// Kube Proxy状态
 struct KubeProxyState {
-    api_client: HttpClient,
     node_name: String,
     proxy_mode: String,
     services: Vec<ServiceInfo>,
@@ -75,7 +72,6 @@ struct KubeProxyState {
 impl KubeProxyState {
     fn new(_master: &str, node_name: &str, proxy_mode: &str, sync_period: u64) -> Self {
         Self {
-            api_client: HttpClient::default(),
             node_name: node_name.to_string(),
             proxy_mode: proxy_mode.to_string(),
             services: vec![],

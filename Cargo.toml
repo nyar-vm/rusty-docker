@@ -9,7 +9,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.0.2"
+version = "0.0.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/nyar-vm/rusty-docker"
@@ -63,14 +63,14 @@ tauri-build = { version = "2.0", features = [] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-fs = "2.0"
 
-docker = { path = "backends/docker", version = "0.0.2", package = "docker2"}
-kubernetes = { path = "backends/kubernetes", version = "0.0.2", package = "kubernetes2"}
-docker-types = { path = "backends/docker-types", version = "0.0.2" }
-docker-storage = { path = "backends/docker-storage", version = "0.0.2" }
-docker-network = { path = "backends/docker-network", version = "0.0.2" }
-docker-runtime = { path = "backends/docker-runtime", version = "0.0.2" }
-docker-registry = { path = "backends/docker-registry", version = "0.0.2", package = "docker-registry2"}
-docker-image = { path = "backends/docker-image", version = "0.0.2", package = "docker-image2"}
+docker = { path = "backends/docker", version = "0.0.0", package = "docker2"}
+kubernetes = { path = "backends/kubernetes", version = "0.0.0", package = "kubernetes2"}
+docker-types = { path = "backends/docker-types", version = "0.0.0" }
+docker-storage = { path = "backends/docker-storage", version = "0.0.0" }
+docker-network = { path = "backends/docker-network", version = "0.0.0" }
+docker-runtime = { path = "backends/docker-runtime", version = "0.0.0" }
+docker-registry = { path = "backends/docker-registry", version = "0.0.0", package = "docker-registry2"}
+docker-image = { path = "backends/docker-image", version = "0.0.0", package = "docker-image2"}
 # Wae services
 wae-server = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
 wae-request = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
