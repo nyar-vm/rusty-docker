@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-use bollard::{API_DEFAULT_VERSION, Docker};
+
 use docker_types::DockerError;
 use serde::{Deserialize, Serialize};
 

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use serde_yaml;
+use oak_yaml;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::Path;
@@ -198,13 +198,13 @@ fn read_kustomization(path: Option<&str>) -> Result<Kustomization, String> {
     }
 
     let content = fs::read_to_string(&kustomization_path).map_err(|e| e.to_string())?;
-    serde_yaml::from_str(&content).map_err(|e| e.to_string())
+    oak_yaml::from_str(&content).map_err(|e| e.to_string())
 }
 
 /// 写入 kustomization.yaml 文件
 fn write_kustomization(kustomization: &Kustomization, path: Option<&str>) -> Result<(), String> {
     let kustomization_path = get_kustomization_path(path);
-    let yaml = serde_yaml::to_string(kustomization).map_err(|e| e.to_string())?;
+    let yaml = oak_yaml::to_string(kustomization).map_err(|e| e.to_string())?
     fs::write(&kustomization_path, yaml).map_err(|e| e.to_string())
 }
 

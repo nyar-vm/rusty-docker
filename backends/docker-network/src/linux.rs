@@ -1,19 +1,18 @@
 use super::{NetworkConfig, NetworkInfo, NetworkManager, Result};
-use bollard::Docker;
-use bollard::network::{
-    ConnectNetworkOptions, DisconnectNetworkOptions, InspectNetworkOptions, ListNetworksOptions,
-    NetworkCreateRequest,
-};
 use docker_types::DockerError;
+use std::collections::HashMap;
+use std::sync::RwLock;
+use rand;
 
 pub struct LinuxNetworkManager {
-    docker: Docker,
+    networks: RwLock<HashMap<String, NetworkInfo>>,
 }
 
 impl LinuxNetworkManager {
     pub fn new() -> Self {
-        let docker = Docker::connect_with_defaults().expect("Failed to connect to Docker");
-        Self { docker }
+        Self {
+            networks: RwLock::new(HashMap::new()),
+        }
     }
 }
 
@@ -23,23 +22,28 @@ impl NetworkManager for LinuxNetworkManager {
         config: &NetworkConfig,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
         Box::pin(async move {
-            let network_create = bollard::models::NetworkCreate {
-                name: Some(config.name.clone()),
-                driver: Some(config.driver.clone()),
-                enable_ipv6: Some(config.enable_ipv6),
-                options: config.options.clone(),
-                ..Default::default()
+            // Generate a random network ID
+            let network_id = format!("{:x}", rand::random::<u64>());
+            
+            // Create network info
+            let network_info = NetworkInfo {
+                id: network_id.clone(),
+                name: config.name.clone(),
+                driver: config.driver.clone(),
+                scope: "local".to_string(),
+                enable_ipv6: config.enable_ipv6,
+                internal: false,
+                attachable: true,
+                ingress: false,
+                containers: HashMap::new(),
+                options: config.options.clone().unwrap_or_default(),
+                labels: HashMap::new(),
             };
-
-            let response = self
-                .docker
-                .create_network(None, network_create)
-                .map_err(|e| {
-                    DockerError::container_error(format!("Failed to create network: {:?}", e))
-                })?;
-
-            let network_id = response.id;
-            self.inspect_network(&network_id).await
+            
+            // Store network info
+            self.networks.write().unwrap().insert(network_id, network_info.clone());
+            
+            Ok(network_info)
         })
     }
 
@@ -50,19 +54,24 @@ impl NetworkManager for LinuxNetworkManager {
         aliases: Option<Vec<String>>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
-            let connect_options = bollard::network::ConnectNetworkOptions {
-                container: container_id.to_string(),
-                aliases,
-                ..Default::default()
-            };
-
-            self.docker
-                .connect_network(network_id, connect_options)
-                .map_err(|e| {
-                    DockerError::container_error(format!("Failed to connect container: {:?}", e))
-                })?;
-
-            Ok(())
+            let mut networks = self.networks.write().unwrap();
+            
+            if let Some(network) = networks.get_mut(network_id) {
+                // Add container to network
+                let container_info = super::ContainerInfo {
+                    name: container_id.to_string(),
+                    endpoint_id: format!("{:x}", rand::random::<u64>()),
+                    mac_address: format!("02:42:{:02x}:{:02x}:{:02x}:{:02x}", 
+                        rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>()),
+                    ipv4_address: format!("172.17.0.{}", rand::random::<u8>() % 254 + 2),
+                    ipv6_address: "".to_string(),
+                };
+                
+                network.containers.insert(container_id.to_string(), container_info);
+                Ok(())
+            } else {
+                Err(DockerError::not_found("network", network_id.to_string()))
+            }
         })
     }
 
@@ -72,19 +81,15 @@ impl NetworkManager for LinuxNetworkManager {
         container_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
-            let disconnect_options = bollard::network::DisconnectNetworkOptions {
-                container: container_id.to_string(),
-                force: Some(true),
-                ..Default::default()
-            };
-
-            self.docker
-                .disconnect_network(network_id, disconnect_options)
-                .map_err(|e| {
-                    DockerError::container_error(format!("Failed to disconnect container: {:?}", e))
-                })?;
-
-            Ok(())
+            let mut networks = self.networks.write().unwrap();
+            
+            if let Some(network) = networks.get_mut(network_id) {
+                // Remove container from network
+                network.containers.remove(container_id);
+                Ok(())
+            } else {
+                Err(DockerError::not_found("network", network_id.to_string()))
+            }
         })
     }
 
@@ -93,11 +98,13 @@ impl NetworkManager for LinuxNetworkManager {
         network_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
-            self.docker.remove_network(network_id).map_err(|e| {
-                DockerError::container_error(format!("Failed to remove network: {:?}", e))
-            })?;
-
-            Ok(())
+            let mut networks = self.networks.write().unwrap();
+            
+            if networks.remove(network_id).is_some() {
+                Ok(())
+            } else {
+                Err(DockerError::not_found("network", network_id.to_string()))
+            }
         })
     }
 
@@ -106,29 +113,8 @@ impl NetworkManager for LinuxNetworkManager {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>>
     {
         Box::pin(async move {
-            let options = bollard::query_parameters::ListNetworksOptions::default();
-            let networks = self.docker.list_networks(Some(options)).map_err(|e| {
-                DockerError::container_error(format!("Failed to list networks: {:?}", e))
-            })?;
-
-            let network_infos: Vec<NetworkInfo> = networks
-                .into_iter()
-                .map(|network| NetworkInfo {
-                    id: network.id.unwrap_or_default(),
-                    name: network.name.unwrap_or_default(),
-                    driver: network.driver.unwrap_or_default(),
-                    scope: network.scope.unwrap_or_default(),
-                    enable_ipv6: network.enable_ipv6.unwrap_or(false),
-                    internal: network.internal.unwrap_or(false),
-                    attachable: network.attachable.unwrap_or(false),
-                    ingress: network.ingress.unwrap_or(false),
-                    containers: std::collections::HashMap::new(),
-                    options: network.options.unwrap_or_default(),
-                    labels: network.labels.unwrap_or_default(),
-                })
-                .collect();
-
-            Ok(network_infos)
+            let networks = self.networks.read().unwrap();
+            Ok(networks.values().cloned().collect())
         })
     }
 
@@ -137,32 +123,13 @@ impl NetworkManager for LinuxNetworkManager {
         network_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
         Box::pin(async move {
-            let options = bollard::query_parameters::InspectNetworkOptions {
-                scope: None,
-                verbose: None,
-            };
-            let network = self
-                .docker
-                .inspect_network(network_id, Some(options))
-                .map_err(|e| {
-                    DockerError::container_error(format!("Failed to inspect network: {:?}", e))
-                })?;
-
-            let containers = std::collections::HashMap::new();
-
-            Ok(NetworkInfo {
-                id: network.id.unwrap_or_default(),
-                name: network.name.unwrap_or_default(),
-                driver: network.driver.unwrap_or_default(),
-                scope: network.scope.unwrap_or_default(),
-                enable_ipv6: network.enable_ipv6.unwrap_or(false),
-                internal: network.internal.unwrap_or(false),
-                attachable: network.attachable.unwrap_or(false),
-                ingress: network.ingress.unwrap_or(false),
-                containers,
-                options: network.options.unwrap_or_default(),
-                labels: network.labels.unwrap_or_default(),
-            })
+            let networks = self.networks.read().unwrap();
+            
+            if let Some(network) = networks.get(network_id) {
+                Ok(network.clone())
+            } else {
+                Err(DockerError::not_found("network", network_id.to_string()))
+            }
         })
     }
 }

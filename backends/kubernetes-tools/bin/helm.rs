@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use serde_yaml;
+use oak_yaml;
 use std::fs;
 use std::path::Path;
 use tokio;
@@ -219,7 +219,7 @@ fn init_helm_config() -> Result<(), String> {
         let default_repos = HelmRepositories {
             repositories: vec![],
         };
-        let yaml = serde_yaml::to_string(&default_repos)
+        let yaml = oak_yaml::to_string(&default_repos)
             .map_err(|e| format!("无法序列化仓库配置: {}", e))?;
         fs::write(&repos_file, yaml).map_err(|e| format!("无法写入仓库配置文件: {}", e))?;
     }
@@ -232,13 +232,13 @@ fn read_repositories() -> Result<HelmRepositories, String> {
     let repos_file = get_repositories_file();
     let content =
         fs::read_to_string(&repos_file).map_err(|e| format!("无法读取仓库配置文件: {}", e))?;
-    serde_yaml::from_str(&content).map_err(|e| format!("无法解析仓库配置文件: {}", e))
+    oak_yaml::from_str(&content).map_err(|e| format!("无法解析仓库配置文件: {}", e))
 }
 
 /// 写入 Helm 仓库配置
 fn write_repositories(repos: &HelmRepositories) -> Result<(), String> {
     let repos_file = get_repositories_file();
-    let yaml = serde_yaml::to_string(repos).map_err(|e| format!("无法序列化仓库配置: {}", e))?;
+    let yaml = oak_yaml::to_string(repos).map_err(|e| format!("无法序列化仓库配置: {}", e))?;
     fs::write(&repos_file, yaml).map_err(|e| format!("无法写入仓库配置文件: {}", e))
 }
 
