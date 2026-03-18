@@ -48,13 +48,13 @@ impl ConfigManager {
     fn get_config_path() -> Result<String> {
         // 在不同操作系统上的默认配置路径
         #[cfg(target_os = "windows")]
-        let default_path = "C:\\ProgramData\\rusty-docker\\config.toml";
+        let default_path = "C:\\ProgramData\\rusty-docker\\config.json";
 
         #[cfg(target_os = "linux")]
-        let default_path = "/etc/rusty-docker/config.toml";
+        let default_path = "/etc/rusty-docker/config.json";
 
         #[cfg(target_os = "macos")]
-        let default_path = "/usr/local/etc/rusty-docker/config.toml";
+        let default_path = "/usr/local/etc/rusty-docker/config.json";
 
         // 检查配置文件是否存在
         if Path::new(default_path).exists() {
@@ -77,7 +77,7 @@ impl ConfigManager {
         // 创建默认配置
         let default_config = Self::get_default_config();
         let config_content =
-            toml::to_string(&default_config).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
+            serde_json::to_string(&default_config).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
 
         // 写入配置文件
         fs::write(path, config_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
@@ -121,7 +121,7 @@ impl ConfigManager {
 
         // 解析配置文件
         let config: DockerConfig =
-            toml::from_str(&config_content).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
+            serde_json::from_str(&config_content).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
 
         Ok(config)
     }
@@ -129,7 +129,8 @@ impl ConfigManager {
     /// 保存配置
     pub fn save_config(&self, config: &DockerConfig) -> Result<()> {
         // 序列化配置
-        let config_content = toml::to_string(config).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
+        let config_content =
+            serde_json::to_string(config).map_err(|e| DockerError::parse_error("DockerConfig", e.to_string()))?;
 
         // 写入配置文件
         fs::write(&self.config_path, config_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
@@ -158,10 +159,10 @@ impl ConfigManager {
 
         // 序列化配置信息
         let config_content =
-            toml::to_string(&config_info).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
+            serde_json::to_string(&config_info).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
 
         // 写入配置文件
-        let config_path = format!("{}/{}.toml", self.configs_dir, id);
+        let config_path = format!("{}/{}.json", self.configs_dir, id);
         fs::write(&config_path, config_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
 
         Ok(config_info)
@@ -170,7 +171,7 @@ impl ConfigManager {
     /// 更新配置
     pub fn update_config(&self, config_id: &str, data: &str, labels: HashMap<String, String>) -> Result<ConfigInfo> {
         // 检查配置是否存在
-        let config_path = format!("{}/{}.toml", self.configs_dir, config_id);
+        let config_path = format!("{}/{}.json", self.configs_dir, config_id);
         if !Path::new(&config_path).exists() {
             return Err(DockerError::not_found("config", format!("Config {} not found", config_id)));
         }
@@ -179,7 +180,7 @@ impl ConfigManager {
         let config_content =
             fs::read_to_string(&config_path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
         let mut config_info: ConfigInfo =
-            toml::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
+            serde_json::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
 
         // 更新配置
         config_info.data = data.to_string();
@@ -187,7 +188,7 @@ impl ConfigManager {
 
         // 序列化并保存
         let updated_content =
-            toml::to_string(&config_info).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
+            serde_json::to_string(&config_info).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
         fs::write(&config_path, updated_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
 
         Ok(config_info)
@@ -195,7 +196,7 @@ impl ConfigManager {
 
     /// 删除配置
     pub fn delete_config(&self, config_id: &str) -> Result<()> {
-        let config_path = format!("{}/{}.toml", self.configs_dir, config_id);
+        let config_path = format!("{}/{}.json", self.configs_dir, config_id);
         if !Path::new(&config_path).exists() {
             return Err(DockerError::not_found("config", format!("Config {} not found", config_id)));
         }
@@ -206,7 +207,7 @@ impl ConfigManager {
 
     /// 获取配置详细信息
     pub fn get_config_info(&self, config_id: &str) -> Result<ConfigInfo> {
-        let config_path = format!("{}/{}.toml", self.configs_dir, config_id);
+        let config_path = format!("{}/{}.json", self.configs_dir, config_id);
         if !Path::new(&config_path).exists() {
             return Err(DockerError::not_found("config", format!("Config {} not found", config_id)));
         }
@@ -214,7 +215,7 @@ impl ConfigManager {
         let config_content =
             fs::read_to_string(&config_path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
         let config_info: ConfigInfo =
-            toml::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
+            serde_json::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
 
         Ok(config_info)
     }
@@ -228,11 +229,11 @@ impl ConfigManager {
             let entry = entry.map_err(|e| DockerError::io_error("entry", e.to_string()))?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().unwrap_or_default() == "toml" {
+            if path.is_file() && path.extension().unwrap_or_default() == "json" {
                 let config_content =
                     fs::read_to_string(&path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
                 let config_info: ConfigInfo =
-                    toml::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
+                    serde_json::from_str(&config_content).map_err(|e| DockerError::parse_error("ConfigInfo", e.to_string()))?;
                 configs.push(config_info);
             }
         }
@@ -249,10 +250,10 @@ impl ConfigManager {
 
         // 序列化密钥信息
         let secret_content =
-            toml::to_string(&secret_info).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
+            serde_json::to_string(&secret_info).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
 
         // 写入密钥文件
-        let secret_path = format!("{}/{}.toml", self.secrets_dir, id);
+        let secret_path = format!("{}/{}.json", self.secrets_dir, id);
         fs::write(&secret_path, secret_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
 
         // 写入密钥数据（实际应用中应该加密存储）
@@ -264,7 +265,7 @@ impl ConfigManager {
 
     /// 删除密钥
     pub fn delete_secret(&self, secret_id: &str) -> Result<()> {
-        let secret_path = format!("{}/{}.toml", self.secrets_dir, secret_id);
+        let secret_path = format!("{}/{}.json", self.secrets_dir, secret_id);
         let data_path = format!("{}/{}.data", self.secrets_dir, secret_id);
 
         if !Path::new(&secret_path).exists() {
@@ -282,7 +283,7 @@ impl ConfigManager {
 
     /// 获取密钥详细信息
     pub fn get_secret_info(&self, secret_id: &str) -> Result<SecretInfo> {
-        let secret_path = format!("{}/{}.toml", self.secrets_dir, secret_id);
+        let secret_path = format!("{}/{}.json", self.secrets_dir, secret_id);
         if !Path::new(&secret_path).exists() {
             return Err(DockerError::not_found("secret", format!("Secret {} not found", secret_id)));
         }
@@ -290,7 +291,7 @@ impl ConfigManager {
         let secret_content =
             fs::read_to_string(&secret_path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
         let secret_info: SecretInfo =
-            toml::from_str(&secret_content).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
+            serde_json::from_str(&secret_content).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
 
         Ok(secret_info)
     }
@@ -304,11 +305,11 @@ impl ConfigManager {
             let entry = entry.map_err(|e| DockerError::io_error("entry", e.to_string()))?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().unwrap_or_default() == "toml" {
+            if path.is_file() && path.extension().unwrap_or_default() == "json" {
                 let secret_content =
                     fs::read_to_string(&path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
                 let secret_info: SecretInfo =
-                    toml::from_str(&secret_content).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
+                    serde_json::from_str(&secret_content).map_err(|e| DockerError::parse_error("SecretInfo", e.to_string()))?;
                 secrets.push(secret_info);
             }
         }
@@ -358,10 +359,10 @@ impl ConfigManager {
 
         // 序列化端点信息
         let endpoint_content =
-            toml::to_string(&endpoint_info).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
+            serde_json::to_string(&endpoint_info).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
 
         // 写入端点文件
-        let endpoint_path = format!("{}/{}.toml", self.endpoints_dir, id);
+        let endpoint_path = format!("{}/{}.json", self.endpoints_dir, id);
         fs::write(&endpoint_path, endpoint_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
 
         Ok(endpoint_info)
@@ -381,7 +382,7 @@ impl ConfigManager {
         labels: HashMap<String, String>,
     ) -> Result<EndpointInfo> {
         // 检查端点是否存在
-        let endpoint_path = format!("{}/{}.toml", self.endpoints_dir, endpoint_id);
+        let endpoint_path = format!("{}/{}.json", self.endpoints_dir, endpoint_id);
         if !Path::new(&endpoint_path).exists() {
             return Err(DockerError::not_found("endpoint", format!("Endpoint {} not found", endpoint_id)));
         }
@@ -390,7 +391,7 @@ impl ConfigManager {
         let endpoint_content =
             fs::read_to_string(&endpoint_path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
         let mut endpoint_info: EndpointInfo =
-            toml::from_str(&endpoint_content).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
+            serde_json::from_str(&endpoint_content).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
 
         // 更新端点配置
         endpoint_info.config.name = name.to_string();
@@ -404,7 +405,7 @@ impl ConfigManager {
 
         // 序列化并保存
         let updated_content =
-            toml::to_string(&endpoint_info).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
+            serde_json::to_string(&endpoint_info).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
         fs::write(&endpoint_path, updated_content).map_err(|e| DockerError::io_error("write", e.to_string()))?;
 
         Ok(endpoint_info)
@@ -412,7 +413,7 @@ impl ConfigManager {
 
     /// 删除端点
     pub fn delete_endpoint(&self, endpoint_id: &str) -> Result<()> {
-        let endpoint_path = format!("{}/{}.toml", self.endpoints_dir, endpoint_id);
+        let endpoint_path = format!("{}/{}.json", self.endpoints_dir, endpoint_id);
         if !Path::new(&endpoint_path).exists() {
             return Err(DockerError::not_found("endpoint", format!("Endpoint {} not found", endpoint_id)));
         }
@@ -423,7 +424,7 @@ impl ConfigManager {
 
     /// 获取端点详细信息
     pub fn get_endpoint_info(&self, endpoint_id: &str) -> Result<EndpointInfo> {
-        let endpoint_path = format!("{}/{}.toml", self.endpoints_dir, endpoint_id);
+        let endpoint_path = format!("{}/{}.json", self.endpoints_dir, endpoint_id);
         if !Path::new(&endpoint_path).exists() {
             return Err(DockerError::not_found("endpoint", format!("Endpoint {} not found", endpoint_id)));
         }
@@ -431,7 +432,7 @@ impl ConfigManager {
         let endpoint_content =
             fs::read_to_string(&endpoint_path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
         let endpoint_info: EndpointInfo =
-            toml::from_str(&endpoint_content).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
+            serde_json::from_str(&endpoint_content).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
 
         Ok(endpoint_info)
     }
@@ -445,11 +446,11 @@ impl ConfigManager {
             let entry = entry.map_err(|e| DockerError::io_error("entry", e.to_string()))?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().unwrap_or_default() == "toml" {
+            if path.is_file() && path.extension().unwrap_or_default() == "json" {
                 let endpoint_content =
                     fs::read_to_string(&path).map_err(|e| DockerError::io_error("read_to_string", e.to_string()))?;
-                let endpoint_info: EndpointInfo =
-                    toml::from_str(&endpoint_content).map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
+                let endpoint_info: EndpointInfo = serde_json::from_str(&endpoint_content)
+                    .map_err(|e| DockerError::parse_error("EndpointInfo", e.to_string()))?;
                 endpoints.push(endpoint_info);
             }
         }

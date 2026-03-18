@@ -209,46 +209,46 @@ fn write_kustomization(kustomization: &Kustomization, path: Option<&str>) -> Res
     // 构建 YAML 内容
     let mut yaml = format!("apiVersion: {}\n", kustomization.api_version);
     yaml.push_str(&format!("kind: {}\n", kustomization.kind));
-    
+
     if let Some(resources) = &kustomization.resources {
         yaml.push_str("resources:\n");
         for resource in resources {
             yaml.push_str(&format!("  - {}\n", resource));
         }
     }
-    
+
     if let Some(bases) = &kustomization.bases {
         yaml.push_str("bases:\n");
         for base in bases {
             yaml.push_str(&format!("  - {}\n", base));
         }
     }
-    
+
     if let Some(patches) = &kustomization.patches {
         yaml.push_str("patches:\n");
         for patch in patches {
             yaml.push_str(&format!("  - {}\n", patch));
         }
     }
-    
+
     if let Some(namespace) = &kustomization.namespace {
         yaml.push_str(&format!("namespace: {}\n", namespace));
     }
-    
+
     if let Some(images) = &kustomization.images {
         yaml.push_str("images:\n");
         for image in images {
             yaml.push_str(&format!("  - {}\n", image));
         }
     }
-    
+
     if let Some(replicas) = &kustomization.replicas {
         yaml.push_str("replicas:\n");
         for replica in replicas {
             yaml.push_str(&format!("  - name: {}\n    count: {}\n", replica.name, replica.count));
         }
     }
-    
+
     if let Some(labels) = &kustomization.labels {
         yaml.push_str("labels:\n");
         for label in labels {
@@ -261,14 +261,14 @@ fn write_kustomization(kustomization: &Kustomization, path: Option<&str>) -> Res
             }
         }
     }
-    
+
     if let Some(annotations) = &kustomization.annotations {
         yaml.push_str("annotations:\n");
         for annotation in annotations {
             yaml.push_str(&format!("  - pairs: {}\n", annotation.pairs));
         }
     }
-    
+
     fs::write(&kustomization_path, yaml).map_err(|e| e.to_string())
 }
 

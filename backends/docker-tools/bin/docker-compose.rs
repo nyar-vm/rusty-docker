@@ -648,9 +648,7 @@ fn load_single_compose_file(path: &str) -> Result<()> {
             info!("Successfully parsed compose file: {}", path);
             Ok(())
         }
-        Err(e) => {
-            Err(DockerError::invalid_params("compose_file", format!("Failed to parse compose file: {}", e)))
-        }
+        Err(e) => Err(DockerError::invalid_params("compose_file", format!("Failed to parse compose file: {}", e))),
     }
 }
 

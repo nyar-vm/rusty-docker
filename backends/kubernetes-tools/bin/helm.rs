@@ -223,13 +223,13 @@ fn read_repositories() -> Result<HelmRepositories, String> {
     if !Path::new(&repos_file).exists() {
         return Err("仓库配置文件不存在".to_string());
     }
-    
+
     // 读取文件内容
     let content = match fs::read_to_string(&repos_file) {
         Ok(content) => content,
         Err(e) => return Err(format!("无法读取文件: {}", e)),
     };
-    
+
     // 使用 serde_yaml 解析 YAML
     match serde_yaml::from_str(&content) {
         Ok(repos) => Ok(repos),
@@ -240,43 +240,43 @@ fn read_repositories() -> Result<HelmRepositories, String> {
 /// 写入 Helm 仓库配置
 fn write_repositories(repos: &HelmRepositories) -> Result<(), String> {
     let repos_file = get_repositories_file();
-    
+
     // 构建 YAML 内容
     let mut yaml = "repositories:\n".to_string();
-    
+
     for repo in &repos.repositories {
         yaml.push_str(&format!("- name: {}\n", repo.name));
         yaml.push_str(&format!("  url: {}\n", repo.url));
-        
+
         if let Some(cert_file) = &repo.cert_file {
             yaml.push_str(&format!("  certFile: {}\n", cert_file));
         }
-        
+
         if let Some(key_file) = &repo.key_file {
             yaml.push_str(&format!("  keyFile: {}\n", key_file));
         }
-        
+
         if let Some(ca_file) = &repo.ca_file {
             yaml.push_str(&format!("  caFile: {}\n", ca_file));
         }
-        
+
         if let Some(insecure_skip_tls_verify) = &repo.insecure_skip_tls_verify {
             yaml.push_str(&format!("  insecureSkipTLSVerify: {}\n", insecure_skip_tls_verify));
         }
-        
+
         if let Some(username) = &repo.username {
             yaml.push_str(&format!("  username: {}\n", username));
         }
-        
+
         if let Some(password) = &repo.password {
             yaml.push_str(&format!("  password: {}\n", password));
         }
-        
+
         if let Some(bearer_token) = &repo.bearer_token {
             yaml.push_str(&format!("  bearerToken: {}\n", bearer_token));
         }
     }
-    
+
     fs::write(&repos_file, yaml).map_err(|e| format!("无法写入仓库配置文件: {}", e))
 }
 

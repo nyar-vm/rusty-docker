@@ -31,8 +31,7 @@ impl ContainerManager for WindowsContainerManager {
         read_only: bool,
     ) -> Result<Container> {
         // 生成容器 ID
-        let mut rng = thread_rng();
-        let container_id: String = (0..32).map(|_| rng.sample(Alphanumeric) as char).collect();
+        let container_id: String = (0..32).map(|_| rand::random::<char>()).collect();
 
         // 创建容器
         let container = Container {
