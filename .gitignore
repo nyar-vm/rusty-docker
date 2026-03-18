@@ -22,5 +22,6 @@ bar-chart.svg
 node_modules/
 cache/
 dist/
+pnpm-lock.yaml
 *.log
 *.txt

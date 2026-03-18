@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use serde_json::{Value, to_string_pretty};
-use serde_yaml;
+use oak_yaml;
 use std::{collections::HashMap, error::Error, fs::File, io::Read, path::Path};
 use tokio::fs::read_to_string;
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse};
@@ -629,8 +629,8 @@ impl K8sClient {
 async fn load_resource_from_file(file_path: &str) -> Result<K8sResource, Box<dyn Error>> {
     let content = read_to_string(file_path).await?;
 
-    // 尝试使用 serde_yaml 解析 YAML
-    match serde_yaml::from_str(&content) {
+    // 尝试使用 oak_yaml 解析 YAML
+    match from_str(&content) {
         Ok(resource) => Ok(resource),
         Err(e) => Err(format!("Failed to parse resource file: {}", e).into()),
     }
@@ -1232,8 +1232,8 @@ impl KubeConfig {
         // 读取文件内容
         let content = read_to_string(kubeconfig_path).await?;
 
-        // 使用 serde_yaml 解析 YAML
-        match serde_yaml::from_str(&content) {
+        // 使用 oak_yaml 解析 YAML
+        match from_str(&content) {
             Ok(kubeconfig) => Ok(kubeconfig),
             Err(e) => Err(format!("Failed to parse kubeconfig: {}", e).into()),
         }
