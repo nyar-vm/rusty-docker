@@ -481,24 +481,29 @@ impl SchedulerState {
         println!("Scheduling pods...");
         // 调度过程
         let pod_count = self.pending_pods.len();
+        let mut scheduled_pods = vec![];
+        
+        // 先收集所有需要调度的pod和对应的节点
         for i in 0..pod_count {
-            // 先获取不可变引用进行选择节点
             let pod = &self.pending_pods[i];
             if let Some(node) = self.select_node(pod) {
-                println!("Scheduled pod {}/{}", pod.namespace, pod.name, node);
-                
-                // 然后获取可变引用更新pod
-                let pod = &mut self.pending_pods[i];
-                pod.node_name = Some(node.clone());
-                
-                // 这里应该调用API服务器更新Pod的nodeName字段
-                self.bind_pod_to_node(pod, &node).await;
+                scheduled_pods.push((i, node));
             } else {
                 println!(
                     "No suitable node found for pod {}/{}",
                     pod.namespace, pod.name
                 );
             }
+        }
+        
+        // 然后更新pod和绑定到节点
+        for (i, node) in scheduled_pods {
+            let pod = &mut self.pending_pods[i];
+            println!("Scheduled pod {}/{}", pod.namespace, pod.name, node);
+            pod.node_name = Some(node.clone());
+            
+            // 这里应该调用API服务器更新Pod的nodeName字段
+            self.bind_pod_to_node(pod, &node).await;
         }
     }
 

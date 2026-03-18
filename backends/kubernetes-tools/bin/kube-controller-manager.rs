@@ -27,7 +27,7 @@ struct Cli {
 }
 
 /// 控制器类型
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ControllerType {
     ReplicationController,
     ReplicaSetController,
