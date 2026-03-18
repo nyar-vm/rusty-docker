@@ -63,12 +63,7 @@ impl RustyDocker {
         let network_manager = Arc::new(Mutex::new(new_network_manager()));
         let user_manager = Arc::new(UserManager::new());
 
-        Ok(Self {
-            runtime,
-            storage,
-            network_manager,
-            user_manager,
-        })
+        Ok(Self { runtime, storage, network_manager, user_manager })
     }
 
     /// 启动服务
@@ -99,18 +94,7 @@ impl RustyDocker {
         enable_ipv6: bool,
         detach: bool,
     ) -> DockerResult<ContainerInfo> {
-        self.runtime
-            .run_container(
-                image,
-                name,
-                ports,
-                network_name,
-                network_mode,
-                aliases,
-                enable_ipv6,
-                detach,
-            )
-            .await
+        self.runtime.run_container(image, name, ports, network_name, network_mode, aliases, enable_ipv6, detach).await
     }
 
     /// 列出容器
@@ -137,9 +121,7 @@ impl RustyDocker {
         no_cache: bool,
         force_rm: bool,
     ) -> DockerResult<ImageInfo> {
-        self.storage
-            .build_image(path, tag, pull, no_cache, force_rm)
-            .await
+        self.storage.build_image(path, tag, pull, no_cache, force_rm).await
     }
 
     /// 列出镜像
@@ -165,15 +147,11 @@ impl RustyDocker {
     /// 列出网络
     pub async fn list_networks(&self) -> DockerResult<Vec<docker_types::NetworkConfigInfo>> {
         // 使用网络管理器列出网络
-        let mut network_manager = self
-            .network_manager
-            .lock()
-            .map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
+        let mut network_manager =
+            self.network_manager.lock().map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
 
-        let networks = network_manager
-            .list_networks()
-            .await
-            .map_err(|e| docker_types::DockerError::network_error(e.to_string()))?;
+        let networks =
+            network_manager.list_networks().await.map_err(|e| docker_types::DockerError::network_error(e.to_string()))?;
 
         // 转换为 docker_types::NetworkConfigInfo
         let network_configs = networks
@@ -201,10 +179,8 @@ impl RustyDocker {
         options: Option<std::collections::HashMap<String, String>>,
     ) -> DockerResult<docker_types::NetworkConfigInfo> {
         // 使用网络管理器创建网络
-        let mut network_manager = self
-            .network_manager
-            .lock()
-            .map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
+        let mut network_manager =
+            self.network_manager.lock().map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
 
         let network_config = NetworkConfig {
             name: name.clone(),
@@ -234,27 +210,17 @@ impl RustyDocker {
     /// 删除网络
     pub async fn delete_network(&self, network_id: &str) -> DockerResult<()> {
         // 使用网络管理器删除网络
-        let mut network_manager = self
-            .network_manager
-            .lock()
-            .map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
+        let mut network_manager =
+            self.network_manager.lock().map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
 
-        network_manager
-            .remove_network(network_id)
-            .await
-            .map_err(|e| docker_types::DockerError::network_error(e.to_string()))
+        network_manager.remove_network(network_id).await.map_err(|e| docker_types::DockerError::network_error(e.to_string()))
     }
 
     /// 查看网络详情
-    pub async fn inspect_network(
-        &self,
-        network_id: &str,
-    ) -> DockerResult<docker_types::NetworkConfigInfo> {
+    pub async fn inspect_network(&self, network_id: &str) -> DockerResult<docker_types::NetworkConfigInfo> {
         // 使用网络管理器查看网络详情
-        let mut network_manager = self
-            .network_manager
-            .lock()
-            .map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
+        let mut network_manager =
+            self.network_manager.lock().map_err(|e| docker_types::DockerError::internal(e.to_string()))?;
 
         let network = network_manager
             .inspect_network(network_id)
@@ -310,18 +276,13 @@ impl RustyDocker {
     pub async fn get_system_status(&self) -> DockerResult<docker_types::SystemStatus> {
         // 获取容器统计信息
         let containers = self.runtime.list_containers(true).await?;
-        let running_containers = containers
-            .iter()
-            .filter(|c| c.status == docker_types::ContainerStatus::Running)
-            .count() as u32;
+        let running_containers =
+            containers.iter().filter(|c| c.status == docker_types::ContainerStatus::Running).count() as u32;
         let stopped_containers = containers.len() as u32 - running_containers;
         let total_containers = containers.len() as u32;
 
-        let container_stats = docker_types::ContainerStats {
-            running: running_containers,
-            stopped: stopped_containers,
-            total: total_containers,
-        };
+        let container_stats =
+            docker_types::ContainerStats { running: running_containers, stopped: stopped_containers, total: total_containers };
 
         // 模拟系统资源使用情况
         let resource_usage = docker_types::SystemResourceUsage {
@@ -348,12 +309,7 @@ impl RustyDocker {
         // 模拟 Docker 守护进程状态
         let daemon_status = docker_types::DockerDaemonStatus::Running;
 
-        Ok(docker_types::SystemStatus {
-            daemon_status,
-            resource_usage,
-            system_info,
-            container_stats,
-        })
+        Ok(docker_types::SystemStatus { daemon_status, resource_usage, system_info, container_stats })
     }
 
     /// 启动容器
@@ -367,11 +323,7 @@ impl RustyDocker {
     }
 
     /// 在容器中执行命令
-    pub async fn exec_command(
-        &self,
-        container_id: &str,
-        command: &[String],
-    ) -> DockerResult<String> {
+    pub async fn exec_command(&self, container_id: &str, command: &[String]) -> DockerResult<String> {
         self.runtime.exec_command(container_id, command).await
     }
 
@@ -391,10 +343,7 @@ impl RustyDocker {
     }
 
     /// 获取容器端口映射
-    pub async fn get_container_ports(
-        &self,
-        container_id: &str,
-    ) -> DockerResult<std::collections::HashMap<u16, u16>> {
+    pub async fn get_container_ports(&self, container_id: &str) -> DockerResult<std::collections::HashMap<u16, u16>> {
         self.runtime.get_container_ports(container_id).await
     }
 
@@ -476,9 +425,7 @@ impl RustyDocker {
         let mut ports = std::collections::HashMap::new();
         for port in publish {
             if let Some((host, container)) = port.split_once(":") {
-                if let (Ok(host_port), Ok(container_port)) =
-                    (host.parse::<u16>(), container.parse::<u16>())
-                {
+                if let (Ok(host_port), Ok(container_port)) = (host.parse::<u16>(), container.parse::<u16>()) {
                     ports.insert(host_port, container_port);
                 }
             }
@@ -530,10 +477,7 @@ impl RustyDocker {
                 image: "postgres:latest".to_string(),
                 replicas: 1,
                 ports: std::collections::HashMap::from([(5432, 5432)]),
-                environment: std::collections::HashMap::from([(
-                    "POSTGRES_PASSWORD".to_string(),
-                    "secret".to_string(),
-                )]),
+                environment: std::collections::HashMap::from([("POSTGRES_PASSWORD".to_string(), "secret".to_string())]),
                 volumes: vec![],
                 created_at: std::time::SystemTime::now(),
                 updated_at: std::time::SystemTime::now(),
@@ -587,11 +531,7 @@ impl RustyDocker {
     }
 
     /// 扩缩容 Swarm 服务
-    pub async fn scale_service(
-        &mut self,
-        service: &str,
-        replicas: u32,
-    ) -> DockerResult<docker_types::ServiceInfo> {
+    pub async fn scale_service(&mut self, service: &str, replicas: u32) -> DockerResult<docker_types::ServiceInfo> {
         // 模拟服务扩缩容
         Ok(docker_types::ServiceInfo {
             id: service.to_string(),
@@ -665,7 +605,8 @@ impl RustyDocker {
             name: "worker1".to_string(),
             role: if role.as_deref() == Some("manager") {
                 docker_types::NodeRole::Manager
-            } else {
+            }
+            else {
                 docker_types::NodeRole::Worker
             },
             availability: match availability.as_deref() {
@@ -703,12 +644,7 @@ impl RustyDocker {
     // 堆栈管理相关方法
 
     /// 创建堆栈
-    pub async fn stack_deploy(
-        &mut self,
-        name: String,
-        compose_file: String,
-        prune: bool,
-    ) -> DockerResult<StackInfo> {
+    pub async fn stack_deploy(&mut self, name: String, compose_file: String, prune: bool) -> DockerResult<StackInfo> {
         // 模拟堆栈部署
         Ok(StackInfo {
             name,
@@ -759,10 +695,7 @@ impl RustyDocker {
     }
 
     /// 列出堆栈中的服务
-    pub async fn stack_services(
-        &self,
-        stack: &str,
-    ) -> DockerResult<Vec<docker_types::ServiceInfo>> {
+    pub async fn stack_services(&self, stack: &str) -> DockerResult<Vec<docker_types::ServiceInfo>> {
         // 模拟堆栈服务列表
         Ok(vec![
             docker_types::ServiceInfo {
@@ -784,10 +717,7 @@ impl RustyDocker {
                 image: "postgres:latest".to_string(),
                 replicas: 1,
                 ports: std::collections::HashMap::from([(5432, 5432)]),
-                environment: std::collections::HashMap::from([(
-                    "POSTGRES_PASSWORD".to_string(),
-                    "secret".to_string(),
-                )]),
+                environment: std::collections::HashMap::from([("POSTGRES_PASSWORD".to_string(), "secret".to_string())]),
                 volumes: vec![],
                 created_at: std::time::SystemTime::now(),
                 updated_at: std::time::SystemTime::now(),
@@ -798,12 +728,7 @@ impl RustyDocker {
     // 用户管理相关方法
 
     /// 创建用户
-    pub fn create_user(
-        &self,
-        username: String,
-        password: String,
-        role: Role,
-    ) -> DockerResult<user::User> {
+    pub fn create_user(&self, username: String, password: String, role: Role) -> DockerResult<user::User> {
         self.user_manager.create_user(username, password, role)
     }
 
@@ -830,8 +755,7 @@ impl RustyDocker {
         password: Option<String>,
         role: Option<Role>,
     ) -> DockerResult<user::User> {
-        self.user_manager
-            .update_user(user_id, username, password, role)
+        self.user_manager.update_user(user_id, username, password, role)
     }
 
     /// 删除用户

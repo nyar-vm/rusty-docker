@@ -5,8 +5,10 @@
 #![warn(missing_docs)]
 
 use docker_types::DockerError;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::broadcast;
 
 /// 结果类型
@@ -49,19 +51,13 @@ impl Storage {
     /// 创建新的存储引擎
     pub fn new() -> Self {
         let (tx, _) = broadcast::channel(100);
-        Self {
-            data: RwLock::new(HashMap::new()),
-            revision: RwLock::new(1),
-            tx,
-        }
+        Self { data: RwLock::new(HashMap::new()), revision: RwLock::new(1), tx }
     }
 
     /// 获取值
     pub fn get(&self, key: &[u8]) -> Result<KeyValue> {
         let data = self.data.read().unwrap();
-        data.get(key)
-            .cloned()
-            .ok_or(DockerError::not_found("key", "not found"))
+        data.get(key).cloned().ok_or(DockerError::not_found("key", "not found"))
     }
 
     /// 设置值
@@ -77,10 +73,7 @@ impl Storage {
         let kv = KeyValue {
             key: key.clone(),
             value,
-            create_revision: prev_kv
-                .as_ref()
-                .map(|kv| kv.create_revision)
-                .unwrap_or(new_revision),
+            create_revision: prev_kv.as_ref().map(|kv| kv.create_revision).unwrap_or(new_revision),
             mod_revision: new_revision,
             version: prev_kv.as_ref().map(|kv| kv.version + 1).unwrap_or(1),
             lease,
@@ -89,11 +82,7 @@ impl Storage {
         data.insert(key, kv.clone());
 
         // 发送事件
-        let event = Event {
-            r#type: EventType::Put,
-            kv: kv.clone(),
-            prev_kv,
-        };
+        let event = Event { r#type: EventType::Put, kv: kv.clone(), prev_kv };
         self.tx.send(event).ok();
 
         Ok(kv)
@@ -109,11 +98,7 @@ impl Storage {
             *revision += 1;
 
             // 发送事件
-            let event = Event {
-                r#type: EventType::Delete,
-                kv: kv.clone(),
-                prev_kv: None,
-            };
+            let event = Event { r#type: EventType::Delete, kv: kv.clone(), prev_kv: None };
             self.tx.send(event).ok();
         }
 
@@ -146,10 +131,7 @@ pub struct EtcdServer {
 impl EtcdServer {
     /// 创建新的etcd服务器
     pub fn new(address: String) -> Self {
-        Self {
-            storage: Arc::new(Storage::new()),
-            address,
-        }
+        Self { storage: Arc::new(Storage::new()), address }
     }
 
     /// 获取存储引擎

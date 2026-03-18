@@ -4,8 +4,7 @@
 //!
 //! 提供与镜像仓库 API 交互的客户端实现，支持 Docker Hub 和其他仓库类型。
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse, RequestBuilder};
 
@@ -45,12 +44,7 @@ pub trait RegistryClient {
     ///
     /// # 返回
     /// - `Result<HttpResponse>`: 成功返回 HTTP 响应，失败返回错误
-    async fn download_layer_with_range(
-        &self,
-        image: &str,
-        digest: &str,
-        start: u64,
-    ) -> Result<HttpResponse>;
+    async fn download_layer_with_range(&self, image: &str, digest: &str, start: u64) -> Result<HttpResponse>;
 
     /// 获取基本 URL
     ///
@@ -83,10 +77,7 @@ impl DockerHubClient {
 
         let client = HttpClient::new(config);
 
-        Ok(Self {
-            client,
-            base_url: "https://registry-1.docker.io".to_string(),
-        })
+        Ok(Self { client, base_url: "https://registry-1.docker.io".to_string() })
     }
 
     /// 获取镜像 Manifest（内部实现）
@@ -106,11 +97,7 @@ impl DockerHubClient {
                 .client
                 .get_with_headers(
                     &url,
-                    [(
-                        "Accept".to_string(),
-                        "application/vnd.docker.distribution.manifest.v2+json".to_string(),
-                    )]
-                    .into(),
+                    [("Accept".to_string(), "application/vnd.docker.distribution.manifest.v2+json".to_string())].into(),
                 )
                 .await
             {
@@ -137,11 +124,7 @@ impl DockerHubClient {
                             .get_with_headers(
                                 &url,
                                 [
-                                    (
-                                        "Accept".to_string(),
-                                        "application/vnd.docker.distribution.manifest.v2+json"
-                                            .to_string(),
-                                    ),
+                                    ("Accept".to_string(), "application/vnd.docker.distribution.manifest.v2+json".to_string()),
                                     ("Authorization".to_string(), format!("Bearer {}", token)),
                                 ]
                                 .into(),
@@ -149,29 +132,19 @@ impl DockerHubClient {
                             .await
                             .map_err(|e| DockerError::request_error(&url, e.to_string()))?;
 
-                        let manifest = response
-                            .json::<ImageManifest>()
-                            .map_err(|e| DockerError::request_error(&url, e.to_string()))?;
+                        let manifest =
+                            response.json::<ImageManifest>().map_err(|e| DockerError::request_error(&url, e.to_string()))?;
                         return Ok(manifest);
                     }
                 }
-                return Err(DockerError::registry_error(format!(
-                    "Failed to get manifest: {}",
-                    response.status
-                ))
-                .into());
+                return Err(DockerError::registry_error(format!("Failed to get manifest: {}", response.status)).into());
             }
 
-            let manifest = response
-                .json::<ImageManifest>()
-                .map_err(|e| DockerError::json_error(e.to_string()))?;
+            let manifest = response.json::<ImageManifest>().map_err(|e| DockerError::json_error(e.to_string()))?;
             return Ok(manifest);
         }
 
-        Err(DockerError::registry_error(
-            "Failed to get manifest after multiple attempts".to_string(),
-        )
-        .into())
+        Err(DockerError::registry_error("Failed to get manifest after multiple attempts".to_string()).into())
     }
 
     /// 获取认证令牌
@@ -186,9 +159,7 @@ impl DockerHubClient {
         // 解析 WWW-Authenticate 头
         let parts: Vec<&str> = auth_header.split(' ').collect();
         if parts.len() != 2 || parts[0] != "Bearer" {
-            return Err(
-                DockerError::registry_error("Invalid WWW-Authenticate header".to_string()).into(),
-            );
+            return Err(DockerError::registry_error("Invalid WWW-Authenticate header".to_string()).into());
         }
 
         let params: Vec<&str> = parts[1].split(',').collect();
@@ -211,36 +182,20 @@ impl DockerHubClient {
         }
 
         if realm.is_empty() || service.is_empty() {
-            return Err(
-                DockerError::registry_error("Invalid WWW-Authenticate header".to_string()).into(),
-            );
+            return Err(DockerError::registry_error("Invalid WWW-Authenticate header".to_string()).into());
         }
 
-        let scope = if scope.is_empty() {
-            format!("repository:{}/pull", image)
-        } else {
-            scope.to_string()
-        };
+        let scope = if scope.is_empty() { format!("repository:{}/pull", image) } else { scope.to_string() };
 
         let auth_url = format!("{}?service={}&scope={}", realm, service, scope);
 
-        let response = self
-            .client
-            .get(&auth_url)
-            .await
-            .map_err(|e| DockerError::request_error(&auth_url, e.to_string()))?;
+        let response = self.client.get(&auth_url).await.map_err(|e| DockerError::request_error(&auth_url, e.to_string()))?;
 
         if !response.is_success() {
-            return Err(DockerError::registry_error(format!(
-                "Failed to get auth token: {}",
-                response.status
-            ))
-            .into());
+            return Err(DockerError::registry_error(format!("Failed to get auth token: {}", response.status)).into());
         }
 
-        let auth_response = response
-            .json::<AuthResponse>()
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let auth_response = response.json::<AuthResponse>().map_err(|e| DockerError::json_error(e.to_string()))?;
         Ok(auth_response.token)
     }
 
@@ -278,30 +233,20 @@ impl DockerHubClient {
                         // 使用令牌重新请求
                         let response = self
                             .client
-                            .get_with_headers(
-                                &url,
-                                [("Authorization".to_string(), format!("Bearer {}", token))].into(),
-                            )
+                            .get_with_headers(&url, [("Authorization".to_string(), format!("Bearer {}", token))].into())
                             .await
                             .map_err(|e| DockerError::request_error(&url, e.to_string()))?;
 
                         return Ok(response);
                     }
                 }
-                return Err(DockerError::registry_error(format!(
-                    "Failed to download layer: {}",
-                    response.status
-                ))
-                .into());
+                return Err(DockerError::registry_error(format!("Failed to download layer: {}", response.status)).into());
             }
 
             return Ok(response);
         }
 
-        Err(DockerError::registry_error(
-            "Failed to download layer after multiple attempts".to_string(),
-        )
-        .into())
+        Err(DockerError::registry_error("Failed to download layer after multiple attempts".to_string()).into())
     }
 
     /// 下载镜像层（支持续点续传，内部实现）
@@ -313,33 +258,22 @@ impl DockerHubClient {
     ///
     /// # 返回
     /// - `Result<HttpResponse>`: 成功返回 HTTP 响应，失败返回错误
-    async fn download_layer_with_range_internal(
-        &self,
-        image: &str,
-        digest: &str,
-        start: u64,
-    ) -> Result<HttpResponse> {
+    async fn download_layer_with_range_internal(&self, image: &str, digest: &str, start: u64) -> Result<HttpResponse> {
         let url = format!("{}/v2/{}/blobs/{}", self.base_url, image, digest);
 
         // 重试逻辑
         for attempt in 0..3 {
-            let response = match self
-                .client
-                .get_with_headers(
-                    &url,
-                    [("Range".to_string(), format!("bytes={}-", start))].into(),
-                )
-                .await
-            {
-                Ok(response) => response,
-                Err(e) => {
-                    if attempt < 2 {
-                        tokio::time::sleep(Duration::from_secs(1 << attempt)).await;
-                        continue;
+            let response =
+                match self.client.get_with_headers(&url, [("Range".to_string(), format!("bytes={}-", start))].into()).await {
+                    Ok(response) => response,
+                    Err(e) => {
+                        if attempt < 2 {
+                            tokio::time::sleep(Duration::from_secs(1 << attempt)).await;
+                            continue;
+                        }
+                        return Err(DockerError::request_error(&url, e.to_string()).into());
                     }
-                    return Err(DockerError::request_error(&url, e.to_string()).into());
-                }
-            };
+                };
 
             if !response.is_success() && response.status != 206 {
                 // 如果需要认证，获取认证令牌
@@ -365,20 +299,13 @@ impl DockerHubClient {
                         return Ok(response);
                     }
                 }
-                return Err(DockerError::registry_error(format!(
-                    "Failed to download layer: {}",
-                    response.status
-                ))
-                .into());
+                return Err(DockerError::registry_error(format!("Failed to download layer: {}", response.status)).into());
             }
 
             return Ok(response);
         }
 
-        Err(DockerError::registry_error(
-            "Failed to download layer after multiple attempts".to_string(),
-        )
-        .into())
+        Err(DockerError::registry_error("Failed to download layer after multiple attempts".to_string()).into())
     }
 }
 
@@ -401,14 +328,8 @@ impl RegistryClient for DockerHubClient {
         self.download_layer_internal(image, digest).await
     }
 
-    async fn download_layer_with_range(
-        &self,
-        image: &str,
-        digest: &str,
-        start: u64,
-    ) -> Result<HttpResponse> {
-        self.download_layer_with_range_internal(image, digest, start)
-            .await
+    async fn download_layer_with_range(&self, image: &str, digest: &str, start: u64) -> Result<HttpResponse> {
+        self.download_layer_with_range_internal(image, digest, start).await
     }
 
     fn get_base_url(&self) -> &str {

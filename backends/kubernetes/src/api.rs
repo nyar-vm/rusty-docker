@@ -2,8 +2,7 @@
 
 //! Kubernetes API 接口
 
-use crate::models::*;
-use crate::runtime::KubernetesRuntime;
+use crate::{models::*, runtime::KubernetesRuntime};
 use docker_types::Result as DockerResult;
 
 /// Kubernetes API 服务
@@ -41,11 +40,7 @@ impl KubernetesApi {
     }
 
     /// 扩缩容部署
-    pub async fn scale_deployment(
-        &self,
-        name: &str,
-        replicas: u32,
-    ) -> DockerResult<DeploymentInfo> {
+    pub async fn scale_deployment(&self, name: &str, replicas: u32) -> DockerResult<DeploymentInfo> {
         self.runtime.scale_deployment(name, replicas).await
     }
 
@@ -57,9 +52,7 @@ impl KubernetesApi {
         ports: Vec<ServicePort>,
         service_type: ServiceType,
     ) -> DockerResult<ServiceInfo> {
-        self.runtime
-            .create_service(name, selector, ports, service_type)
-            .await
+        self.runtime.create_service(name, selector, ports, service_type).await
     }
 
     /// 列出服务

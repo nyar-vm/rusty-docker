@@ -19,9 +19,7 @@ struct AppState {
 impl AppState {
     /// 创建新的应用状态
     fn new() -> Self {
-        AppState {
-            docker: Mutex::new(None),
-        }
+        AppState { docker: Mutex::new(None) }
     }
 }
 
@@ -47,10 +45,7 @@ async fn init_docker(state: tauri::State<'_, AppState>) -> Result<(), String> {
 
 /// 列出容器
 #[tauri::command]
-async fn list_containers(
-    state: tauri::State<'_, AppState>,
-    all: bool,
-) -> Result<Vec<ContainerInfo>, String> {
+async fn list_containers(state: tauri::State<'_, AppState>, all: bool) -> Result<Vec<ContainerInfo>, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
     docker.list_containers(all).await.map_err(|e| e.to_string())
@@ -58,66 +53,39 @@ async fn list_containers(
 
 /// 启动容器
 #[tauri::command]
-async fn start_container(
-    state: tauri::State<'_, AppState>,
-    container_id: String,
-) -> Result<(), String> {
+async fn start_container(state: tauri::State<'_, AppState>, container_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
     let runtime = docker.get_runtime();
-    runtime
-        .start_container(&container_id)
-        .await
-        .map_err(|e| e.to_string())
+    runtime.start_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 /// 停止容器
 #[tauri::command]
-async fn stop_container(
-    state: tauri::State<'_, AppState>,
-    container_id: String,
-) -> Result<(), String> {
+async fn stop_container(state: tauri::State<'_, AppState>, container_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .stop_container(&container_id)
-        .await
-        .map_err(|e| e.to_string())
+    docker.stop_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 /// 重启容器
 #[tauri::command]
-async fn restart_container(
-    state: tauri::State<'_, AppState>,
-    container_id: String,
-) -> Result<(), String> {
+async fn restart_container(state: tauri::State<'_, AppState>, container_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
     let runtime = docker.get_runtime();
     // 先停止容器
-    docker
-        .stop_container(&container_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    docker.stop_container(&container_id).await.map_err(|e| e.to_string())?;
     // 再启动容器
-    runtime
-        .start_container(&container_id)
-        .await
-        .map_err(|e| e.to_string())
+    runtime.start_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 /// 删除容器
 #[tauri::command]
-async fn delete_container(
-    state: tauri::State<'_, AppState>,
-    container_id: String,
-) -> Result<(), String> {
+async fn delete_container(state: tauri::State<'_, AppState>, container_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .remove_container(&container_id)
-        .await
-        .map_err(|e| e.to_string())
+    docker.remove_container(&container_id).await.map_err(|e| e.to_string())
 }
 
 /// 运行新容器
@@ -134,18 +102,7 @@ async fn run_container(
 ) -> Result<ContainerInfo, String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .run(
-            image,
-            name,
-            ports,
-            network_name,
-            network_mode,
-            aliases,
-            enable_ipv6,
-        )
-        .await
-        .map_err(|e| e.to_string())
+    docker.run(image, name, ports, network_name, network_mode, aliases, enable_ipv6).await.map_err(|e| e.to_string())
 }
 
 // ==================== 镜像管理命令 ====================
@@ -160,23 +117,13 @@ async fn list_images(state: tauri::State<'_, AppState>) -> Result<Vec<ImageInfo>
 
 /// 拉取镜像
 #[tauri::command]
-async fn pull_image(
-    state: tauri::State<'_, AppState>,
-    image_name: String,
-) -> Result<ImageInfo, String> {
+async fn pull_image(state: tauri::State<'_, AppState>, image_name: String) -> Result<ImageInfo, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
     // 解析镜像名称和标签
     let parts: Vec<&str> = image_name.split(':').collect();
-    let (image, tag) = if parts.len() > 1 {
-        (parts[0], parts[1])
-    } else {
-        (image_name.as_str(), "latest")
-    };
-    docker
-        .pull_image(image, tag)
-        .await
-        .map_err(|e| e.to_string())
+    let (image, tag) = if parts.len() > 1 { (parts[0], parts[1]) } else { (image_name.as_str(), "latest") };
+    docker.pull_image(image, tag).await.map_err(|e| e.to_string())
 }
 
 /// 删除镜像
@@ -184,19 +131,14 @@ async fn pull_image(
 async fn delete_image(state: tauri::State<'_, AppState>, image_id: String) -> Result<(), String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
-    docker
-        .delete_image(&image_id)
-        .await
-        .map_err(|e| e.to_string())
+    docker.delete_image(&image_id).await.map_err(|e| e.to_string())
 }
 
 // ==================== 网络管理命令 ====================
 
 /// 列出网络
 #[tauri::command]
-async fn list_networks(
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<docker_types::NetworkConfigInfo>, String> {
+async fn list_networks(state: tauri::State<'_, AppState>) -> Result<Vec<docker_types::NetworkConfigInfo>, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
     docker.list_networks().await.map_err(|e| e.to_string())
@@ -213,33 +155,22 @@ async fn create_network(
 ) -> Result<docker_types::NetworkConfigInfo, String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .create_network(name, driver, enable_ipv6, options)
-        .await
-        .map_err(|e| e.to_string())
+    docker.create_network(name, driver, enable_ipv6, options).await.map_err(|e| e.to_string())
 }
 
 /// 删除网络
 #[tauri::command]
-async fn delete_network(
-    state: tauri::State<'_, AppState>,
-    network_id: String,
-) -> Result<(), String> {
+async fn delete_network(state: tauri::State<'_, AppState>, network_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .delete_network(&network_id)
-        .await
-        .map_err(|e| e.to_string())
+    docker.delete_network(&network_id).await.map_err(|e| e.to_string())
 }
 
 // ==================== 卷管理命令 ====================
 
 /// 列出卷
 #[tauri::command]
-async fn list_volumes(
-    state: tauri::State<'_, AppState>,
-) -> Result<Vec<docker_types::VolumeInfo>, String> {
+async fn list_volumes(state: tauri::State<'_, AppState>) -> Result<Vec<docker_types::VolumeInfo>, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
     docker.list_volumes().await.map_err(|e| e.to_string())
@@ -255,10 +186,7 @@ async fn create_volume(
 ) -> Result<docker_types::VolumeInfo, String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .create_volume(name, driver, labels)
-        .await
-        .map_err(|e| e.to_string())
+    docker.create_volume(name, driver, labels).await.map_err(|e| e.to_string())
 }
 
 /// 删除卷
@@ -266,10 +194,7 @@ async fn create_volume(
 async fn delete_volume(state: tauri::State<'_, AppState>, volume_id: String) -> Result<(), String> {
     let mut docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_mut().ok_or("Docker 服务未初始化")?;
-    docker
-        .delete_volume(&volume_id)
-        .await
-        .map_err(|e| e.to_string())
+    docker.delete_volume(&volume_id).await.map_err(|e| e.to_string())
 }
 
 // ==================== 系统状态命令 ====================
@@ -279,10 +204,7 @@ async fn delete_volume(state: tauri::State<'_, AppState>, volume_id: String) -> 
 async fn get_system_status(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
-    let system_status = docker
-        .get_system_status()
-        .await
-        .map_err(|e| e.to_string())?;
+    let system_status = docker.get_system_status().await.map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(system_status).map_err(|e| e.to_string())?)
 }
 
@@ -298,10 +220,7 @@ async fn get_container_logs(
 ) -> Result<String, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
-    let logs = docker
-        .get_container_logs(&container_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let logs = docker.get_container_logs(&container_id).await.map_err(|e| e.to_string())?;
     Ok(logs.join("\n"))
 }
 
@@ -315,10 +234,7 @@ async fn exec_container_command(
 ) -> Result<String, String> {
     let docker_lock = state.docker.lock().unwrap();
     let docker = docker_lock.as_ref().ok_or("Docker 服务未初始化")?;
-    let result = docker
-        .exec_command(&container_id, &[command])
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = docker.exec_command(&container_id, &[command]).await.map_err(|e| e.to_string())?;
     Ok(result)
 }
 

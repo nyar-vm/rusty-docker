@@ -7,8 +7,7 @@
 pub mod config;
 pub mod runtime;
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use config::ConfigManager;
 use docker_types::{ConfigInfo, DockerConfig, SecretInfo};
@@ -37,11 +36,7 @@ impl RustyDocker {
         // 使用配置初始化容器运行时
         let runtime = Arc::new(ContainerRuntime::new_with_config(config.clone())?);
 
-        Ok(Self {
-            runtime,
-            config_manager,
-            config,
-        })
+        Ok(Self { runtime, config_manager, config })
     }
 
     /// 获取全局配置
@@ -77,10 +72,7 @@ impl RustyDocker {
     }
 
     /// 列出容器
-    pub async fn list_containers(
-        &self,
-        all: bool,
-    ) -> docker_types::Result<Vec<docker_types::ContainerInfo>> {
+    pub async fn list_containers(&self, all: bool) -> docker_types::Result<Vec<docker_types::ContainerInfo>> {
         self.runtime.list_containers(all).await
     }
 
@@ -96,20 +88,11 @@ impl RustyDocker {
 
     /// 克隆 Docker 实例
     pub fn clone(&self) -> Self {
-        Self {
-            runtime: self.runtime.clone(),
-            config_manager: self.config_manager.clone(),
-            config: self.config.clone(),
-        }
+        Self { runtime: self.runtime.clone(), config_manager: self.config_manager.clone(), config: self.config.clone() }
     }
 
     /// 创建配置
-    pub fn create_config(
-        &self,
-        name: &str,
-        data: &str,
-        labels: HashMap<String, String>,
-    ) -> docker_types::Result<ConfigInfo> {
+    pub fn create_config(&self, name: &str, data: &str, labels: HashMap<String, String>) -> docker_types::Result<ConfigInfo> {
         self.config_manager.create_config(name, data, labels)
     }
 
@@ -139,12 +122,7 @@ impl RustyDocker {
     }
 
     /// 创建密钥
-    pub fn create_secret(
-        &self,
-        name: &str,
-        data: &str,
-        labels: HashMap<String, String>,
-    ) -> docker_types::Result<SecretInfo> {
+    pub fn create_secret(&self, name: &str, data: &str, labels: HashMap<String, String>) -> docker_types::Result<SecretInfo> {
         self.config_manager.create_secret(name, data, labels)
     }
 

@@ -2,10 +2,9 @@
 
 use docker_types::DockerError;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// Container 结构体表示一个 Docker 容器
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Container {
     /// 容器 ID
     pub id: String,
@@ -34,7 +33,7 @@ pub struct Container {
 }
 
 /// ContainerStatus 枚举表示容器的各种状态
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum ContainerStatus {
     /// 容器已创建
     Created,

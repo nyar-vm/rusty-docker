@@ -2,21 +2,24 @@
 
 //! 容器运行时
 
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
-use std::path::Path;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::{
+    fs::{File, OpenOptions},
+    io::{Read, Write},
+    path::Path,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::cgroup::CgroupManager;
-use crate::namespace::{NamespaceManager, NamespaceType};
-use crate::storage::StorageService;
+use crate::{
+    cgroup::CgroupManager,
+    namespace::{NamespaceManager, NamespaceType},
+    storage::StorageService,
+};
 
 use docker_types::{
-    ContainerConfig, ContainerInfo, ContainerStatus, DockerError, NetworkConfig, NetworkInfo,
-    ResourceLimits, Result,
+    ContainerConfig, ContainerInfo, ContainerStatus, DockerError, NetworkConfig, NetworkInfo, ResourceLimits, Result,
 };
 #[cfg(target_os = "linux")]
 use nix::sys::signal;
@@ -44,12 +47,7 @@ impl ContainerRuntime {
         // 加载容器状态
         let containers = Arc::new(RwLock::new(Self::load_containers()?));
 
-        Ok(Self {
-            namespace_manager,
-            cgroup_manager,
-            storage,
-            containers,
-        })
+        Ok(Self { namespace_manager, cgroup_manager, storage, containers })
     }
 
     /// 加载容器状态
@@ -59,9 +57,9 @@ impl ContainerRuntime {
             let mut file = File::open(container_file)?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
-            serde_json::from_str(&content)
-                .map_err(|e| DockerError::io_error("load_containers", e.to_string()))
-        } else {
+            serde_json::from_str(&content).map_err(|e| DockerError::io_error("load_containers", e.to_string()))
+        }
+        else {
             Ok(vec![])
         }
     }
@@ -69,13 +67,9 @@ impl ContainerRuntime {
     /// 保存容器状态
     fn save_containers(containers: &Vec<ContainerInfo>) -> Result<()> {
         let container_file = Path::new("containers.json");
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(container_file)?;
-        let content = serde_json::to_string_pretty(containers)
-            .map_err(|e| DockerError::io_error("save_containers", e.to_string()))?;
+        let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(container_file)?;
+        let content =
+            serde_json::to_string_pretty(containers).map_err(|e| DockerError::io_error("save_containers", e.to_string()))?;
         file.write_all(content.as_bytes())?;
         Ok(())
     }
@@ -117,8 +111,7 @@ impl ContainerRuntime {
         self.storage.create_container_dir(&container_id)?;
 
         // 创建控制组
-        self.cgroup_manager
-            .create_cgroup(&container_id, &config.resources)?;
+        self.cgroup_manager.create_cgroup(&container_id, &config.resources)?;
 
         // 创建容器信息
         let container_info = ContainerInfo {
@@ -131,20 +124,14 @@ impl ContainerRuntime {
             started_at: None,
             stopped_at: None,
             pid: None,
-            network_info: NetworkInfo {
-                ip_address: None,
-                ports: Default::default(),
-                network_name: "default".to_string(),
-            },
+            network_info: NetworkInfo { ip_address: None, ports: Default::default(), network_name: "default".to_string() },
         };
 
         // 保存容器配置
-        self.storage
-            .write_container_config(&container_id, &config)?;
+        self.storage.write_container_config(&container_id, &config)?;
 
         // 保存环境变量
-        self.storage
-            .write_container_env(&container_id, &config.environment)?;
+        self.storage.write_container_env(&container_id, &config.environment)?;
 
         // 添加到容器列表
         let mut containers = self.containers.write().await;
@@ -152,7 +139,8 @@ impl ContainerRuntime {
         if let Some(index) = containers.iter().position(|c| c.id == container_id) {
             // 替换现有容器
             containers[index] = container_info.clone();
-        } else {
+        }
+        else {
             // 添加新容器
             containers.push(container_info.clone());
         }
@@ -185,25 +173,20 @@ impl ContainerRuntime {
                 .into_iter()
                 .filter_map(|p| {
                     if let Some((host, container)) = p.split_once(":") {
-                        if let (Ok(host_port), Ok(container_port)) =
-                            (host.parse::<u16>(), container.parse::<u16>())
-                        {
+                        if let (Ok(host_port), Ok(container_port)) = (host.parse::<u16>(), container.parse::<u16>()) {
                             Some((host_port, container_port))
-                        } else {
+                        }
+                        else {
                             None
                         }
-                    } else {
+                    }
+                    else {
                         None
                     }
                 })
                 .collect(),
             volumes: vec![],
-            resources: ResourceLimits {
-                cpu_limit: 1.0,
-                memory_limit: 512,
-                storage_limit: 10,
-                network_limit: 10,
-            },
+            resources: ResourceLimits { cpu_limit: 1.0, memory_limit: 512, storage_limit: 10, network_limit: 10 },
             network: NetworkConfig {
                 network_name: network_name.unwrap_or_else(|| "default".to_string()),
                 static_ip: None,
@@ -232,51 +215,28 @@ impl ContainerRuntime {
 
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
-            if container.status != ContainerStatus::Creating
-                && container.status != ContainerStatus::Stopped
-            {
-                return Err(DockerError::container_error(
-                    "Container is not in a state to start".to_string(),
-                ));
+            if container.status != ContainerStatus::Creating && container.status != ContainerStatus::Stopped {
+                return Err(DockerError::container_error("Container is not in a state to start".to_string()));
             }
 
             // 1. 创建命名空间
-            let pid_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::Pid)?;
-            let net_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::Network)?;
-            let mnt_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::Mount)?;
-            let uts_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::Uts)?;
-            let ipc_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::Ipc)?;
-            let user_ns = self
-                .namespace_manager
-                .create_namespace(NamespaceType::User)?;
+            let pid_ns = self.namespace_manager.create_namespace(NamespaceType::Pid)?;
+            let net_ns = self.namespace_manager.create_namespace(NamespaceType::Network)?;
+            let mnt_ns = self.namespace_manager.create_namespace(NamespaceType::Mount)?;
+            let uts_ns = self.namespace_manager.create_namespace(NamespaceType::Uts)?;
+            let ipc_ns = self.namespace_manager.create_namespace(NamespaceType::Ipc)?;
+            let user_ns = self.namespace_manager.create_namespace(NamespaceType::User)?;
 
             // 2. 保存命名空间
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::Pid, pid_ns)?;
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::Network, net_ns)?;
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::Mount, mnt_ns)?;
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::Uts, uts_ns)?;
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::Ipc, ipc_ns)?;
-            self.namespace_manager
-                .save_namespace(container_id, NamespaceType::User, user_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::Pid, pid_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::Network, net_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::Mount, mnt_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::Uts, uts_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::Ipc, ipc_ns)?;
+            self.namespace_manager.save_namespace(container_id, NamespaceType::User, user_ns)?;
 
             // 3. 准备容器文件系统
-            self.storage
-                .prepare_container_fs(container_id, &container.image)?;
+            self.storage.prepare_container_fs(container_id, &container.image)?;
 
             // 4. 执行容器命令
             // 这里使用 std::process 模拟容器进程
@@ -313,20 +273,15 @@ impl ContainerRuntime {
             };
 
             // 写入启动日志
-            self.storage.write_container_log(
-                container_id,
-                &format!("Container started with PID: {}", pid),
-            )?;
-            self.storage.write_container_log(
-                container_id,
-                &format!("Network: {}, IP: {}", network_name, "172.17.0.2"),
-            )?;
+            self.storage.write_container_log(container_id, &format!("Container started with PID: {}", pid))?;
+            self.storage.write_container_log(container_id, &format!("Network: {}, IP: {}", network_name, "172.17.0.2"))?;
 
             // 保存容器状态
             Self::save_containers(&containers)?;
 
             Ok(())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -338,9 +293,7 @@ impl ContainerRuntime {
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
             if container.status != ContainerStatus::Running {
-                return Err(DockerError::container_error(
-                    "Container is not running".to_string(),
-                ));
+                return Err(DockerError::container_error("Container is not running".to_string()));
             }
 
             // 1. 发送信号终止进程
@@ -348,8 +301,7 @@ impl ContainerRuntime {
                 #[cfg(target_os = "linux")]
                 {
                     // 尝试发送 SIGTERM 信号
-                    if let Err(e) = signal::kill(unistd::Pid::from_raw(pid as i32), signal::SIGTERM)
-                    {
+                    if let Err(e) = signal::kill(unistd::Pid::from_raw(pid as i32), signal::SIGTERM) {
                         // 如果发送失败，尝试 SIGKILL
                         signal::kill(unistd::Pid::from_raw(pid as i32), signal::SIGKILL).ok();
                     }
@@ -358,9 +310,7 @@ impl ContainerRuntime {
                 #[cfg(not(target_os = "linux"))]
                 {
                     // 在非 Linux 平台上，使用标准库终止进程
-                    if let Ok(process) = std::process::Command::new("taskkill")
-                        .args(&["/F", "/PID", &pid.to_string()])
-                        .output()
+                    if let Ok(process) = std::process::Command::new("taskkill").args(&["/F", "/PID", &pid.to_string()]).output()
                     {
                         if !process.status.success() {
                             // 尝试其他方法
@@ -379,14 +329,14 @@ impl ContainerRuntime {
             container.pid = None;
 
             // 写入停止日志
-            self.storage
-                .write_container_log(container_id, "Container stopped")?;
+            self.storage.write_container_log(container_id, "Container stopped")?;
 
             // 保存容器状态
             Self::save_containers(&containers)?;
 
             Ok(())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -400,9 +350,7 @@ impl ContainerRuntime {
 
             // 检查状态
             if container.status == ContainerStatus::Running {
-                return Err(DockerError::container_error(
-                    "Container is running, please stop it first".to_string(),
-                ));
+                return Err(DockerError::container_error("Container is running, please stop it first".to_string()));
             }
 
             // 1. 删除控制组
@@ -413,41 +361,29 @@ impl ContainerRuntime {
 
             // 3. 清理命名空间
             // 清理 PID 命名空间
-            let pid_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::Pid);
+            let pid_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::Pid);
             if std::path::Path::new(&pid_ns_path).exists() {
                 std::fs::remove_file(&pid_ns_path).ok();
             }
             // 清理网络命名空间
-            let net_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::Network);
+            let net_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::Network);
             if std::path::Path::new(&net_ns_path).exists() {
                 std::fs::remove_file(&net_ns_path).ok();
             }
             // 清理其他命名空间
-            let mnt_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::Mount);
+            let mnt_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::Mount);
             if std::path::Path::new(&mnt_ns_path).exists() {
                 std::fs::remove_file(&mnt_ns_path).ok();
             }
-            let uts_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::Uts);
+            let uts_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::Uts);
             if std::path::Path::new(&uts_ns_path).exists() {
                 std::fs::remove_file(&uts_ns_path).ok();
             }
-            let ipc_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::Ipc);
+            let ipc_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::Ipc);
             if std::path::Path::new(&ipc_ns_path).exists() {
                 std::fs::remove_file(&ipc_ns_path).ok();
             }
-            let user_ns_path = self
-                .namespace_manager
-                .get_namespace_path(container_id, NamespaceType::User);
+            let user_ns_path = self.namespace_manager.get_namespace_path(container_id, NamespaceType::User);
             if std::path::Path::new(&user_ns_path).exists() {
                 std::fs::remove_file(&user_ns_path).ok();
             }
@@ -459,7 +395,8 @@ impl ContainerRuntime {
             Self::save_containers(&containers)?;
 
             Ok(())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -469,12 +406,9 @@ impl ContainerRuntime {
         let containers = self.containers.read().await;
         if all {
             Ok(containers.clone())
-        } else {
-            Ok(containers
-                .iter()
-                .filter(|c| c.status == ContainerStatus::Running)
-                .cloned()
-                .collect())
+        }
+        else {
+            Ok(containers.iter().filter(|c| c.status == ContainerStatus::Running).cloned().collect())
         }
     }
 
@@ -484,7 +418,8 @@ impl ContainerRuntime {
 
         if let Some(container) = containers.iter().find(|c| c.id == container_id) {
             Ok(container.clone())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -503,11 +438,7 @@ impl ContainerRuntime {
     /// 在容器中执行命令
     pub async fn exec_command(&self, container_id: &str, command: &[String]) -> Result<String> {
         // 模拟执行命令
-        Ok(format!(
-            "Command executed in container {}: {}",
-            container_id,
-            command.join(" ")
-        ))
+        Ok(format!("Command executed in container {}: {}", container_id, command.join(" ")))
     }
 
     /// 暂停容器
@@ -517,9 +448,7 @@ impl ContainerRuntime {
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
             if container.status != ContainerStatus::Running {
-                return Err(DockerError::container_error(
-                    "Container is not running".to_string(),
-                ));
+                return Err(DockerError::container_error("Container is not running".to_string()));
             }
 
             // 模拟暂停
@@ -529,7 +458,8 @@ impl ContainerRuntime {
             Self::save_containers(&containers)?;
 
             Ok(())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -541,9 +471,7 @@ impl ContainerRuntime {
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
             if container.status != ContainerStatus::Paused {
-                return Err(DockerError::container_error(
-                    "Container is not paused".to_string(),
-                ));
+                return Err(DockerError::container_error("Container is not paused".to_string()));
             }
 
             // 模拟恢复
@@ -553,7 +481,8 @@ impl ContainerRuntime {
             Self::save_containers(&containers)?;
 
             Ok(())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -570,15 +499,13 @@ impl ContainerRuntime {
     }
 
     /// 获取容器端口映射
-    pub async fn get_container_ports(
-        &self,
-        container_id: &str,
-    ) -> Result<std::collections::HashMap<u16, u16>> {
+    pub async fn get_container_ports(&self, container_id: &str) -> Result<std::collections::HashMap<u16, u16>> {
         let containers = self.containers.read().await;
 
         if let Some(container) = containers.iter().find(|c| c.id == container_id) {
             Ok(container.config.ports.clone())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
@@ -587,26 +514,11 @@ impl ContainerRuntime {
     pub async fn get_container_events(&self) -> Result<Vec<String>> {
         // 模拟获取容器事件
         Ok(vec![
-            format!(
-                "{:?} container start test-container-1",
-                std::time::SystemTime::now()
-            ),
-            format!(
-                "{:?} container stop test-container-2",
-                std::time::SystemTime::now()
-            ),
-            format!(
-                "{:?} network create test-network",
-                std::time::SystemTime::now()
-            ),
-            format!(
-                "{:?} volume create test-volume",
-                std::time::SystemTime::now()
-            ),
-            format!(
-                "{:?} container start test-container-3",
-                std::time::SystemTime::now()
-            ),
+            format!("{:?} container start test-container-1", std::time::SystemTime::now()),
+            format!("{:?} container stop test-container-2", std::time::SystemTime::now()),
+            format!("{:?} network create test-network", std::time::SystemTime::now()),
+            format!("{:?} volume create test-volume", std::time::SystemTime::now()),
+            format!("{:?} container start test-container-3", std::time::SystemTime::now()),
         ])
     }
 
@@ -627,38 +539,30 @@ impl ContainerRuntime {
             // 3. 检查容器的资源使用情况
 
             Ok("healthy".to_string())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
 
     /// 获取容器监控信息
-    pub async fn get_container_stats(
-        &self,
-        container_id: &str,
-    ) -> Result<docker_types::ContainerStats> {
+    pub async fn get_container_stats(&self, container_id: &str) -> Result<docker_types::ContainerStats> {
         let containers = self.containers.read().await;
 
         if let Some(_container) = containers.iter().find(|c| c.id == container_id) {
             // 模拟容器监控信息
             // 实际实现中，这里应该从控制组获取真实的资源使用情况
-            let stats = docker_types::ContainerStats {
-                running: 1,
-                stopped: 0,
-                total: 1,
-            };
+            let stats = docker_types::ContainerStats { running: 1, stopped: 0, total: 1 };
 
             Ok(stats)
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
 
     /// 获取容器资源使用情况
-    pub async fn get_container_resource_usage(
-        &self,
-        container_id: &str,
-    ) -> Result<docker_types::SystemResourceUsage> {
+    pub async fn get_container_resource_usage(&self, container_id: &str) -> Result<docker_types::SystemResourceUsage> {
         let containers = self.containers.read().await;
 
         if let Some(_container) = containers.iter().find(|c| c.id == container_id) {
@@ -675,16 +579,14 @@ impl ContainerRuntime {
             };
 
             Ok(usage)
-        } else {
+        }
+        else {
             Err(DockerError::not_found("container", container_id))
         }
     }
 
     /// 获取容器环境变量
-    pub async fn get_container_env(
-        &self,
-        container_id: &str,
-    ) -> Result<std::collections::HashMap<String, String>> {
+    pub async fn get_container_env(&self, container_id: &str) -> Result<std::collections::HashMap<String, String>> {
         // 使用存储服务读取容器环境变量
         self.storage.read_container_env(container_id)
     }
@@ -710,20 +612,13 @@ impl ContainerRuntime {
     }
 
     /// 获取容器配置
-    pub async fn get_container_config(
-        &self,
-        container_id: &str,
-    ) -> Result<docker_types::ContainerConfig> {
+    pub async fn get_container_config(&self, container_id: &str) -> Result<docker_types::ContainerConfig> {
         // 使用存储服务读取容器配置
         self.storage.read_container_config(container_id)
     }
 
     /// 更新容器配置
-    pub async fn update_container_config(
-        &self,
-        container_id: &str,
-        config: &docker_types::ContainerConfig,
-    ) -> Result<()> {
+    pub async fn update_container_config(&self, container_id: &str, config: &docker_types::ContainerConfig) -> Result<()> {
         // 写入配置
         self.storage.write_container_config(container_id, config)?;
 

@@ -9,13 +9,11 @@ use rand::Rng;
 /// Kubernetes 运行时
 pub struct KubernetesRuntime {
     /// 部署存储
-    deployments:
-        std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, DeploymentInfo>>>,
+    deployments: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, DeploymentInfo>>>,
     /// 服务存储
     services: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, ServiceInfo>>>,
     /// 配置映射存储
-    config_maps:
-        std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, ConfigMapInfo>>>,
+    config_maps: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, ConfigMapInfo>>>,
     /// 秘密存储
     secrets: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, SecretInfo>>>,
 }
@@ -24,13 +22,9 @@ impl KubernetesRuntime {
     /// 创建新的 Kubernetes 运行时
     pub fn new() -> DockerResult<Self> {
         Ok(Self {
-            deployments: std::sync::Arc::new(std::sync::RwLock::new(
-                std::collections::HashMap::new(),
-            )),
+            deployments: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
             services: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
-            config_maps: std::sync::Arc::new(std::sync::RwLock::new(
-                std::collections::HashMap::new(),
-            )),
+            config_maps: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
             secrets: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
         })
     }
@@ -60,10 +54,7 @@ impl KubernetesRuntime {
             updated_at: std::time::SystemTime::now(),
         };
 
-        let mut deployments = self
-            .deployments
-            .write()
-            .map_err(|e| DockerError::internal(e.to_string()))?;
+        let mut deployments = self.deployments.write().map_err(|e| DockerError::internal(e.to_string()))?;
 
         deployments.insert(name, deployment.clone());
 
@@ -72,20 +63,14 @@ impl KubernetesRuntime {
 
     /// 列出部署
     pub async fn list_deployments(&self) -> DockerResult<Vec<DeploymentInfo>> {
-        let deployments = self
-            .deployments
-            .read()
-            .map_err(|e| DockerError::internal(e.to_string()))?;
+        let deployments = self.deployments.read().map_err(|e| DockerError::internal(e.to_string()))?;
 
         Ok(deployments.values().cloned().collect())
     }
 
     /// 删除部署
     pub async fn delete_deployment(&self, name: &str) -> DockerResult<()> {
-        let mut deployments = self
-            .deployments
-            .write()
-            .map_err(|e| DockerError::internal(e.to_string()))?;
+        let mut deployments = self.deployments.write().map_err(|e| DockerError::internal(e.to_string()))?;
 
         if deployments.remove(name).is_none() {
             return Err(DockerError::not_found("deployment", name));
@@ -95,19 +80,10 @@ impl KubernetesRuntime {
     }
 
     /// 扩缩容部署
-    pub async fn scale_deployment(
-        &self,
-        name: &str,
-        replicas: u32,
-    ) -> DockerResult<DeploymentInfo> {
-        let mut deployments = self
-            .deployments
-            .write()
-            .map_err(|e| DockerError::internal(e.to_string()))?;
+    pub async fn scale_deployment(&self, name: &str, replicas: u32) -> DockerResult<DeploymentInfo> {
+        let mut deployments = self.deployments.write().map_err(|e| DockerError::internal(e.to_string()))?;
 
-        let deployment = deployments
-            .get_mut(name)
-            .ok_or_else(|| DockerError::not_found("deployment", name))?;
+        let deployment = deployments.get_mut(name).ok_or_else(|| DockerError::not_found("deployment", name))?;
 
         deployment.replicas = replicas;
         deployment.updated_at = std::time::SystemTime::now();
@@ -133,10 +109,7 @@ impl KubernetesRuntime {
             created_at: std::time::SystemTime::now(),
         };
 
-        let mut services = self
-            .services
-            .write()
-            .map_err(|e| DockerError::internal(e.to_string()))?;
+        let mut services = self.services.write().map_err(|e| DockerError::internal(e.to_string()))?;
 
         services.insert(name, service.clone());
 
@@ -145,20 +118,14 @@ impl KubernetesRuntime {
 
     /// 列出服务
     pub async fn list_services(&self) -> DockerResult<Vec<ServiceInfo>> {
-        let services = self
-            .services
-            .read()
-            .map_err(|e| DockerError::io_error("list_services", e.to_string()))?;
+        let services = self.services.read().map_err(|e| DockerError::io_error("list_services", e.to_string()))?;
 
         Ok(services.values().cloned().collect())
     }
 
     /// 删除服务
     pub async fn delete_service(&self, name: &str) -> DockerResult<()> {
-        let mut services = self
-            .services
-            .write()
-            .map_err(|e| DockerError::io_error("delete_service", e.to_string()))?;
+        let mut services = self.services.write().map_err(|e| DockerError::io_error("delete_service", e.to_string()))?;
 
         if services.remove(name).is_none() {
             return Err(DockerError::not_found("service", name));
@@ -180,10 +147,8 @@ impl KubernetesRuntime {
             created_at: std::time::SystemTime::now(),
         };
 
-        let mut config_maps = self
-            .config_maps
-            .write()
-            .map_err(|e| DockerError::io_error("create_config_map", e.to_string()))?;
+        let mut config_maps =
+            self.config_maps.write().map_err(|e| DockerError::io_error("create_config_map", e.to_string()))?;
 
         config_maps.insert(name, config_map.clone());
 
@@ -192,20 +157,15 @@ impl KubernetesRuntime {
 
     /// 列出配置映射
     pub async fn list_config_maps(&self) -> DockerResult<Vec<ConfigMapInfo>> {
-        let config_maps = self
-            .config_maps
-            .read()
-            .map_err(|e| DockerError::io_error("list_config_maps", e.to_string()))?;
+        let config_maps = self.config_maps.read().map_err(|e| DockerError::io_error("list_config_maps", e.to_string()))?;
 
         Ok(config_maps.values().cloned().collect())
     }
 
     /// 删除配置映射
     pub async fn delete_config_map(&self, name: &str) -> DockerResult<()> {
-        let mut config_maps = self
-            .config_maps
-            .write()
-            .map_err(|e| DockerError::io_error("delete_config_map", e.to_string()))?;
+        let mut config_maps =
+            self.config_maps.write().map_err(|e| DockerError::io_error("delete_config_map", e.to_string()))?;
 
         if config_maps.remove(name).is_none() {
             return Err(DockerError::not_found("config_map", name));
@@ -227,10 +187,7 @@ impl KubernetesRuntime {
             created_at: std::time::SystemTime::now(),
         };
 
-        let mut secrets = self
-            .secrets
-            .write()
-            .map_err(|e| DockerError::io_error("create_secret", e.to_string()))?;
+        let mut secrets = self.secrets.write().map_err(|e| DockerError::io_error("create_secret", e.to_string()))?;
 
         secrets.insert(name, secret.clone());
 
@@ -239,20 +196,14 @@ impl KubernetesRuntime {
 
     /// 列出秘密
     pub async fn list_secrets(&self) -> DockerResult<Vec<SecretInfo>> {
-        let secrets = self
-            .secrets
-            .read()
-            .map_err(|e| DockerError::io_error("list_secrets", e.to_string()))?;
+        let secrets = self.secrets.read().map_err(|e| DockerError::io_error("list_secrets", e.to_string()))?;
 
         Ok(secrets.values().cloned().collect())
     }
 
     /// 删除秘密
     pub async fn delete_secret(&self, name: &str) -> DockerResult<()> {
-        let mut secrets = self
-            .secrets
-            .write()
-            .map_err(|e| DockerError::io_error("delete_secret", e.to_string()))?;
+        let mut secrets = self.secrets.write().map_err(|e| DockerError::io_error("delete_secret", e.to_string()))?;
 
         if secrets.remove(name).is_none() {
             return Err(DockerError::not_found("secret", name));
@@ -315,9 +266,6 @@ impl KubernetesRuntime {
     /// 获取节点详情
     pub async fn get_node(&self, name: &str) -> DockerResult<NodeInfo> {
         let nodes = self.list_nodes().await?;
-        nodes
-            .into_iter()
-            .find(|n| n.name == name)
-            .ok_or_else(|| DockerError::not_found("node", name))
+        nodes.into_iter().find(|n| n.name == name).ok_or_else(|| DockerError::not_found("node", name))
     }
 }

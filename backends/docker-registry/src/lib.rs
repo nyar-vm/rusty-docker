@@ -69,11 +69,7 @@ impl RegistryService {
 
         let downloader = Arc::new(ImageDownloader::new(client.clone())?);
 
-        Ok(Self {
-            client,
-            downloader,
-            registry_type,
-        })
+        Ok(Self { client, downloader, registry_type })
     }
 
     /// 从 Docker Hub 创建服务（向后兼容）

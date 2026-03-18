@@ -71,11 +71,7 @@ impl RustyKubernetes {
     }
 
     /// 扩缩容部署
-    pub async fn scale_deployment(
-        &mut self,
-        name: &str,
-        replicas: u32,
-    ) -> DockerResult<models::DeploymentInfo> {
+    pub async fn scale_deployment(&mut self, name: &str, replicas: u32) -> DockerResult<models::DeploymentInfo> {
         self.runtime.scale_deployment(name, replicas).await
     }
 
@@ -87,9 +83,7 @@ impl RustyKubernetes {
         ports: Vec<models::ServicePort>,
         service_type: models::ServiceType,
     ) -> DockerResult<models::ServiceInfo> {
-        self.runtime
-            .create_service(name, selector, ports, service_type)
-            .await
+        self.runtime.create_service(name, selector, ports, service_type).await
     }
 
     /// 列出服务
@@ -157,8 +151,6 @@ impl RustyKubernetes {
 
     /// 克隆 Kubernetes 实例
     pub fn clone(&self) -> Self {
-        Self {
-            runtime: self.runtime.clone(),
-        }
+        Self { runtime: self.runtime.clone() }
     }
 }

@@ -1,13 +1,9 @@
 use clap::{Parser, Subcommand};
+use oak_yaml::parse;
 use serde_json::{Value, to_string_pretty};
-use std::collections::HashMap;
-use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{collections::HashMap, error::Error, fs::File, io::Read, path::Path};
 use tokio::fs::read_to_string;
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse};
-use oak_yaml;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -463,61 +459,33 @@ struct K8sClient {
 
 impl K8sClient {
     async fn new() -> Result<Self, Box<dyn Error>> {
-        // 尝试从默认位置读取 kubeconfig 文件
-        let kubeconfig_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(".kube")
-            .join("config");
-
-        let kubeconfig_content = read_to_string(kubeconfig_path).await?;
-        let kubeconfig: KubeConfig = oak_yaml::from_str(&kubeconfig_content)?;
+        // 加载 kubeconfig
+        let kubeconfig = KubeConfig::load().await?;
 
         // 获取当前上下文
-        let current_context = kubeconfig
-            .contexts
-            .iter()
-            .find(|c| c.name == kubeconfig.currentContext)
-            .ok_or("Current context not found")?;
+        let current_context = kubeconfig.currentContext;
+        let context = kubeconfig.contexts.into_iter().find(|c| c.name == current_context).ok_or("Current context not found")?;
 
-        // 获取集群配置
-        let cluster = kubeconfig
-            .clusters
-            .iter()
-            .find(|c| c.name == current_context.context.cluster)
-            .ok_or("Cluster not found")?;
+        // 获取集群信息
+        let cluster = kubeconfig.clusters.into_iter().find(|c| c.name == context.context.cluster).ok_or("Cluster not found")?;
 
-        // 获取用户配置
-        let user = kubeconfig
-            .users
-            .iter()
-            .find(|u| u.name == current_context.context.user)
-            .ok_or("User not found")?;
+        // 获取用户信息
+        let user = kubeconfig.users.into_iter().find(|u| u.name == context.context.user).ok_or("User not found")?;
 
         // 创建 HTTP 客户端
-        let client = HttpClient::default();
+        let client = HttpClient::new(HttpClientConfig::default());
 
         Ok(Self {
             client,
-            server: cluster.cluster.server.clone(),
-            token: user.user.token.clone(),
-            namespace: current_context
-                .context
-                .namespace
-                .clone()
-                .unwrap_or("default".to_string()),
+            server: cluster.cluster.server,
+            token: user.user.token,
+            namespace: context.context.namespace.unwrap_or_else(|| "default".to_string()),
         })
     }
 
-    async fn get_resources(
-        &self,
-        resource_type: &str,
-        namespace: Option<&str>,
-    ) -> Result<Value, Box<dyn Error>> {
+    async fn get_resources(&self, resource_type: &str, namespace: Option<&str>) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}?limit=500",
-            self.server, ns, resource_type
-        );
+        let url = format!("{}/api/v1/namespaces/{}/{}?limit=500", self.server, ns, resource_type);
 
         let mut headers = HashMap::new();
         if let Some(token) = &self.token {
@@ -531,17 +499,9 @@ impl K8sClient {
         Ok(result)
     }
 
-    async fn get_resource(
-        &self,
-        resource_type: &str,
-        name: &str,
-        namespace: Option<&str>,
-    ) -> Result<Value, Box<dyn Error>> {
+    async fn get_resource(&self, resource_type: &str, name: &str, namespace: Option<&str>) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}/{}?limit=500",
-            self.server, ns, resource_type, name
-        );
+        let url = format!("{}/api/v1/namespaces/{}/{}/{}?limit=500", self.server, ns, resource_type, name);
 
         let mut headers = HashMap::new();
         if let Some(token) = &self.token {
@@ -556,17 +516,8 @@ impl K8sClient {
     }
 
     async fn apply_resource(&self, resource: &K8sResource) -> Result<Value, Box<dyn Error>> {
-        let namespace = resource
-            .metadata
-            .namespace
-            .as_deref()
-            .unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}",
-            self.server,
-            namespace,
-            resource.kind.to_lowercase() + "s"
-        );
+        let namespace = resource.metadata.namespace.as_deref().unwrap_or(&self.namespace);
+        let url = format!("{}/api/v1/namespaces/{}/{}", self.server, namespace, resource.kind.to_lowercase() + "s");
 
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -575,37 +526,23 @@ impl K8sClient {
         }
 
         let body = serde_json::to_vec(resource)?;
-        let response = self
-            .client
-            .request("POST", &url, Some(body), Some(headers))
-            .await?;
+        let response = self.client.request("POST", &url, Some(body), Some(headers)).await?;
         let response_body = String::from_utf8(response.body)?;
         let result: Value = serde_json::from_str(&response_body)?;
 
         Ok(result)
     }
 
-    async fn delete_resource(
-        &self,
-        resource_type: &str,
-        name: &str,
-        namespace: Option<&str>,
-    ) -> Result<Value, Box<dyn Error>> {
+    async fn delete_resource(&self, resource_type: &str, name: &str, namespace: Option<&str>) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}/{}?limit=500",
-            self.server, ns, resource_type, name
-        );
+        let url = format!("{}/api/v1/namespaces/{}/{}/{}?limit=500", self.server, ns, resource_type, name);
 
         let mut headers = HashMap::new();
         if let Some(token) = &self.token {
             headers.insert("Authorization".to_string(), format!("Bearer {}", token));
         }
 
-        let response = self
-            .client
-            .request("DELETE", &url, None, Some(headers))
-            .await?;
+        let response = self.client.request("DELETE", &url, None, Some(headers)).await?;
         let body = String::from_utf8(response.body)?;
         let result: Value = serde_json::from_str(&body)?;
 
@@ -613,17 +550,8 @@ impl K8sClient {
     }
 
     async fn create_resource(&self, resource: &K8sResource) -> Result<Value, Box<dyn Error>> {
-        let namespace = resource
-            .metadata
-            .namespace
-            .as_deref()
-            .unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}",
-            self.server,
-            namespace,
-            resource.kind.to_lowercase() + "s"
-        );
+        let namespace = resource.metadata.namespace.as_deref().unwrap_or(&self.namespace);
+        let url = format!("{}/api/v1/namespaces/{}/{}", self.server, namespace, resource.kind.to_lowercase() + "s");
 
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -632,10 +560,7 @@ impl K8sClient {
         }
 
         let body = serde_json::to_vec(resource)?;
-        let response = self
-            .client
-            .request("POST", &url, Some(body), Some(headers))
-            .await?;
+        let response = self.client.request("POST", &url, Some(body), Some(headers)).await?;
         let response_body = String::from_utf8(response.body)?;
         let result: Value = serde_json::from_str(&response_body)?;
 
@@ -650,42 +575,25 @@ impl K8sClient {
         namespace: Option<&str>,
     ) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/api/v1/namespaces/{}/{}/{}?limit=500",
-            self.server, ns, resource_type, name
-        );
+        let url = format!("{}/api/v1/namespaces/{}/{}/{}?limit=500", self.server, ns, resource_type, name);
 
         let mut headers = HashMap::new();
-        headers.insert(
-            "Content-Type".to_string(),
-            "application/json-patch+json".to_string(),
-        );
+        headers.insert("Content-Type".to_string(), "application/json-patch+json".to_string());
         if let Some(token) = &self.token {
             headers.insert("Authorization".to_string(), format!("Bearer {}", token));
         }
 
         let body = patch.as_bytes().to_vec();
-        let response = self
-            .client
-            .request("PATCH", &url, Some(body), Some(headers))
-            .await?;
+        let response = self.client.request("PATCH", &url, Some(body), Some(headers)).await?;
         let response_body = String::from_utf8(response.body)?;
         let result: Value = serde_json::from_str(&response_body)?;
 
         Ok(result)
     }
 
-    async fn rollout_status(
-        &self,
-        resource_type: &str,
-        name: &str,
-        namespace: Option<&str>,
-    ) -> Result<Value, Box<dyn Error>> {
+    async fn rollout_status(&self, resource_type: &str, name: &str, namespace: Option<&str>) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/apis/apps/v1/namespaces/{}/{}/{}/status",
-            self.server, ns, resource_type, name
-        );
+        let url = format!("{}/apis/apps/v1/namespaces/{}/{}/{}/status", self.server, ns, resource_type, name);
 
         let mut headers = HashMap::new();
         if let Some(token) = &self.token {
@@ -699,17 +607,9 @@ impl K8sClient {
         Ok(result)
     }
 
-    async fn rollout_undo(
-        &self,
-        resource_type: &str,
-        name: &str,
-        namespace: Option<&str>,
-    ) -> Result<Value, Box<dyn Error>> {
+    async fn rollout_undo(&self, resource_type: &str, name: &str, namespace: Option<&str>) -> Result<Value, Box<dyn Error>> {
         let ns = namespace.unwrap_or(&self.namespace);
-        let url = format!(
-            "{}/apis/apps/v1/namespaces/{}/{}/{}/rollback",
-            self.server, ns, resource_type, name
-        );
+        let url = format!("{}/apis/apps/v1/namespaces/{}/{}/{}/rollback", self.server, ns, resource_type, name);
 
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -718,10 +618,7 @@ impl K8sClient {
         }
 
         let body = serde_json::to_vec(&serde_json::json!({}))?;
-        let response = self
-            .client
-            .request("POST", &url, Some(body), Some(headers))
-            .await?;
+        let response = self.client.request("POST", &url, Some(body), Some(headers)).await?;
         let response_body = String::from_utf8(response.body)?;
         let result: Value = serde_json::from_str(&response_body)?;
 
@@ -731,8 +628,16 @@ impl K8sClient {
 
 async fn load_resource_from_file(file_path: &str) -> Result<K8sResource, Box<dyn Error>> {
     let content = read_to_string(file_path).await?;
-    let resource: K8sResource = serde_json::from_str(&content)?;
-    Ok(resource)
+
+    // 尝试使用 oak-yaml 解析 YAML
+    match parse(&content) {
+        Ok(root) => {
+            // 使用 oak-yaml 的 serde 支持进行反序列化
+            let resource: K8sResource = serde::de::Deserialize::deserialize(root)?;
+            Ok(resource)
+        }
+        Err(e) => Err(format!("Failed to parse resource file: {}", e).into()),
+    }
 }
 
 #[tokio::main]
@@ -740,21 +645,11 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Get {
-            resource,
-            name,
-            all_namespaces,
-            selector: _,
-            output: _,
-        } => {
+        Commands::Get { resource, name, all_namespaces, selector: _, output: _ } => {
             // 尝试创建 K8sClient
             match K8sClient::new().await {
                 Ok(client) => {
-                    let namespace = if all_namespaces {
-                        Some("default")
-                    } else {
-                        None
-                    };
+                    let namespace = if all_namespaces { Some("default") } else { None };
 
                     if let Some(name) = name {
                         match client.get_resource(&resource, &name, namespace).await {
@@ -763,7 +658,8 @@ async fn main() {
                             }
                             Err(e) => eprintln!("Error getting resource: {:?}", e),
                         }
-                    } else {
+                    }
+                    else {
                         match client.get_resources(&resource, namespace).await {
                             Ok(resources) => println!("{}", to_string_pretty(&resources).unwrap()),
                             Err(e) => eprintln!("Error getting resources: {:?}", e),
@@ -778,10 +674,12 @@ async fn main() {
                     if let Some(name) = name {
                         if let Some(resource_obj) = cluster.get_resource(&resource, &name) {
                             println!("{}", to_string_pretty(&resource_obj).unwrap());
-                        } else {
+                        }
+                        else {
                             eprintln!("Error: {} '{}' not found", resource, name);
                         }
-                    } else {
+                    }
+                    else {
                         let resources = cluster.get_resources(&resource);
                         println!("{}", to_string_pretty(&resources).unwrap());
                     }
@@ -815,11 +713,7 @@ async fn main() {
                 }
             }
         }
-        Commands::Delete {
-            resource,
-            name,
-            namespace: _,
-        } => {
+        Commands::Delete { resource, name, namespace: _ } => {
             // 尝试创建 K8sClient
             match K8sClient::new().await {
                 Ok(client) => match client.delete_resource(&resource, &name, None).await {
@@ -836,17 +730,14 @@ async fn main() {
                     let mut cluster = K8sCluster::new();
                     if cluster.delete_resource(&resource, &name) {
                         println!("{} '{}' deleted (mock mode)", resource, name);
-                    } else {
+                    }
+                    else {
                         eprintln!("Error: {} '{}' not found", resource, name);
                     }
                 }
             }
         }
-        Commands::Describe {
-            resource,
-            name,
-            namespace: _,
-        } => {
+        Commands::Describe { resource, name, namespace: _ } => {
             // 尝试创建 K8sClient
             match K8sClient::new().await {
                 Ok(client) => match client.get_resource(&resource, &name, None).await {
@@ -860,7 +751,8 @@ async fn main() {
                     let cluster = K8sCluster::new();
                     if let Some(resource_obj) = cluster.get_resource(&resource, &name) {
                         println!("{}", to_string_pretty(&resource_obj).unwrap());
-                    } else {
+                    }
+                    else {
                         eprintln!("Error: {} '{}' not found", resource, name);
                     }
                 }
@@ -873,19 +765,11 @@ async fn main() {
                     Ok(kubeconfig) => {
                         println!("CURRENT   NAME       CLUSTER    AUTHINFO   NAMESPACE");
                         for context in &kubeconfig.contexts {
-                            let current = if context.name == kubeconfig.currentContext {
-                                "*"
-                            } else {
-                                " "
-                            };
+                            let current = if context.name == kubeconfig.currentContext { "*" } else { " " };
                             let ns = context.context.namespace.as_deref().unwrap_or("");
                             println!(
                                 "{}         {}       {}    {}   {}",
-                                current,
-                                context.name,
-                                context.context.cluster,
-                                context.context.user,
-                                ns
+                                current, context.name, context.context.cluster, context.context.user, ns
                             );
                         }
                     }
@@ -929,11 +813,7 @@ async fn main() {
                 }
             }
         }
-        Commands::Edit {
-            resource,
-            name,
-            namespace: _,
-        } => {
+        Commands::Edit { resource, name, namespace: _ } => {
             // 尝试创建 K8sClient
             match K8sClient::new().await {
                 Ok(client) => match client.get_resource(&resource, &name, None).await {
@@ -953,19 +833,14 @@ async fn main() {
                         println!("Opening editor for {} {} (mock mode)", resource, name);
                         println!("{}", to_string_pretty(&resource_obj).unwrap());
                         println!("Edit functionality not fully implemented yet");
-                    } else {
+                    }
+                    else {
                         eprintln!("Error: {} '{}' not found", resource, name);
                     }
                 }
             }
         }
-        Commands::Patch {
-            resource,
-            name,
-            patch,
-            r#type: _,
-            namespace: _,
-        } => {
+        Commands::Patch { resource, name, patch, r#type: _, namespace: _ } => {
             // 尝试创建 K8sClient
             match K8sClient::new().await {
                 Ok(client) => match client.patch_resource(&resource, &name, &patch, None).await {
@@ -1014,10 +889,7 @@ async fn main() {
                     Err(e) => {
                         eprintln!("Error initializing Kubernetes client: {:?}", e);
                         eprintln!("Using mock mode...");
-                        println!(
-                            "Rollout undone successfully for {} {} (mock mode)",
-                            resource, name
-                        );
+                        println!("Rollout undone successfully for {} {} (mock mode)", resource, name);
                     }
                 }
             }
@@ -1236,12 +1108,7 @@ impl K8sCluster {
             K8sResource {
                 apiVersion: "v1".to_string(),
                 kind: "Namespace".to_string(),
-                metadata: Metadata {
-                    name: "default".to_string(),
-                    namespace: None,
-                    labels: None,
-                    annotations: None,
-                },
+                metadata: Metadata { name: "default".to_string(), namespace: None, labels: None, annotations: None },
                 spec: None,
                 status: Some(serde_json::json!({
                     "phase": "Active"
@@ -1250,12 +1117,7 @@ impl K8sCluster {
             K8sResource {
                 apiVersion: "v1".to_string(),
                 kind: "Namespace".to_string(),
-                metadata: Metadata {
-                    name: "kube-system".to_string(),
-                    namespace: None,
-                    labels: None,
-                    annotations: None,
-                },
+                metadata: Metadata { name: "kube-system".to_string(), namespace: None, labels: None, annotations: None },
                 spec: None,
                 status: Some(serde_json::json!({
                     "phase": "Active"
@@ -1263,12 +1125,7 @@ impl K8sCluster {
             },
         ];
 
-        Self {
-            pods,
-            services,
-            deployments,
-            namespaces,
-        }
+        Self { pods, services, deployments, namespaces }
     }
 
     fn get_resources(&self, resource_type: &str) -> Vec<K8sResource> {
@@ -1282,54 +1139,40 @@ impl K8sCluster {
     }
 
     fn get_resource(&self, resource_type: &str, name: &str) -> Option<K8sResource> {
-        self.get_resources(resource_type)
-            .into_iter()
-            .find(|r| r.metadata.name == name)
+        self.get_resources(resource_type).into_iter().find(|r| r.metadata.name == name)
     }
 
     fn apply_resource(&mut self, resource: K8sResource) {
         match resource.kind.as_str() {
             "Pod" => {
-                if let Some(index) = self
-                    .pods
-                    .iter()
-                    .position(|p| p.metadata.name == resource.metadata.name)
-                {
+                if let Some(index) = self.pods.iter().position(|p| p.metadata.name == resource.metadata.name) {
                     self.pods[index] = resource;
-                } else {
+                }
+                else {
                     self.pods.push(resource);
                 }
             }
             "Service" => {
-                if let Some(index) = self
-                    .services
-                    .iter()
-                    .position(|s| s.metadata.name == resource.metadata.name)
-                {
+                if let Some(index) = self.services.iter().position(|s| s.metadata.name == resource.metadata.name) {
                     self.services[index] = resource;
-                } else {
+                }
+                else {
                     self.services.push(resource);
                 }
             }
             "Deployment" => {
-                if let Some(index) = self
-                    .deployments
-                    .iter()
-                    .position(|d| d.metadata.name == resource.metadata.name)
-                {
+                if let Some(index) = self.deployments.iter().position(|d| d.metadata.name == resource.metadata.name) {
                     self.deployments[index] = resource;
-                } else {
+                }
+                else {
                     self.deployments.push(resource);
                 }
             }
             "Namespace" => {
-                if let Some(index) = self
-                    .namespaces
-                    .iter()
-                    .position(|n| n.metadata.name == resource.metadata.name)
-                {
+                if let Some(index) = self.namespaces.iter().position(|n| n.metadata.name == resource.metadata.name) {
                     self.namespaces[index] = resource;
-                } else {
+                }
+                else {
                     self.namespaces.push(resource);
                 }
             }
@@ -1343,7 +1186,8 @@ impl K8sCluster {
                 if let Some(index) = self.pods.iter().position(|p| p.metadata.name == name) {
                     self.pods.remove(index);
                     true
-                } else {
+                }
+                else {
                     false
                 }
             }
@@ -1351,19 +1195,17 @@ impl K8sCluster {
                 if let Some(index) = self.services.iter().position(|s| s.metadata.name == name) {
                     self.services.remove(index);
                     true
-                } else {
+                }
+                else {
                     false
                 }
             }
             "deployments" | "deployment" | "deploy" => {
-                if let Some(index) = self
-                    .deployments
-                    .iter()
-                    .position(|d| d.metadata.name == name)
-                {
+                if let Some(index) = self.deployments.iter().position(|d| d.metadata.name == name) {
                     self.deployments.remove(index);
                     true
-                } else {
+                }
+                else {
                     false
                 }
             }
@@ -1371,7 +1213,8 @@ impl K8sCluster {
                 if let Some(index) = self.namespaces.iter().position(|n| n.metadata.name == name) {
                     self.namespaces.remove(index);
                     true
-                } else {
+                }
+                else {
                     false
                 }
             }
@@ -1382,14 +1225,28 @@ impl K8sCluster {
 
 impl KubeConfig {
     async fn load() -> Result<Self, Box<dyn Error>> {
-        let kubeconfig_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(".kube")
-            .join("config");
+        // 尝试从默认位置读取 kubeconfig 文件
+        let home_dir = dirs::home_dir().ok_or("Cannot find home directory")?;
+        let kubeconfig_path = home_dir.join(".kube").join("config");
 
-        let kubeconfig_content = read_to_string(kubeconfig_path).await?;
-        let kubeconfig: KubeConfig = oak_yaml::from_str(&kubeconfig_content)?;
+        if !kubeconfig_path.exists() {
+            return Err(format!("Kubeconfig file not found at: {}", kubeconfig_path.display()).into());
+        }
 
-        Ok(kubeconfig)
+        // 读取文件内容
+        let content = read_to_string(kubeconfig_path).await?;
+
+        // 使用 oak-yaml 解析 YAML
+        match parse(&content) {
+            Ok(root) => {
+                // 使用 oak-yaml 的 serde 支持进行反序列化
+                // 这里需要实现从 oak-yaml AST 到 KubeConfig 的转换
+                // 由于 oak-yaml 的 serde 支持可能需要特定的实现，我们暂时使用一个简单的方法
+                // 后续可以改进为直接使用 oak-yaml 的 serde 功能
+                let kubeconfig: KubeConfig = serde::de::Deserialize::deserialize(root)?;
+                Ok(kubeconfig)
+            }
+            Err(e) => Err(format!("Failed to parse kubeconfig: {}", e).into()),
+        }
     }
 }

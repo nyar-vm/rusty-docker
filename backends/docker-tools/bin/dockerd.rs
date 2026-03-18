@@ -2,11 +2,12 @@ use clap::Parser;
 use docker::Docker;
 use docker_types::{ContainerInfo, ImageInfo, Result as DockerResult};
 use serde_json::{Value, from_str, to_string};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use std::{collections::HashMap, sync::Arc};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::Mutex,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -18,44 +19,18 @@ struct Cli {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 enum DockerCommand {
-    Run {
-        image: String,
-        name: Option<String>,
-        ports: Vec<String>,
-    },
-    Ps {
-        all: bool,
-    },
-    Stop {
-        container: String,
-    },
-    Rm {
-        container: String,
-    },
-    Build {
-        path: String,
-        tag: String,
-    },
+    Run { image: String, name: Option<String>, ports: Vec<String> },
+    Ps { all: bool },
+    Stop { container: String },
+    Rm { container: String },
+    Build { path: String, tag: String },
     Images,
-    Pull {
-        image: String,
-        tag: String,
-    },
-    Rmi {
-        image: String,
-    },
-    Inspect {
-        container: String,
-    },
-    Start {
-        container: String,
-    },
-    Pause {
-        container: String,
-    },
-    Unpause {
-        container: String,
-    },
+    Pull { image: String, tag: String },
+    Rmi { image: String },
+    Inspect { container: String },
+    Start { container: String },
+    Pause { container: String },
+    Unpause { container: String },
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -103,11 +78,7 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
                         if let Some(host_ports_array) = host_ports.as_array() {
                             for host_port in host_ports_array {
                                 if let Some(host_port_str) = host_port["HostPort"].as_str() {
-                                    ports.push(format!(
-                                        "{}:{}",
-                                        host_port_str,
-                                        container_port.split("/").next().unwrap()
-                                    ));
+                                    ports.push(format!("{}:{}", host_port_str, container_port.split("/").next().unwrap()));
                                 }
                             }
                         }
@@ -115,10 +86,7 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
                 }
 
                 let mut docker = docker.lock().await;
-                match docker
-                    .run(image, name, ports, None, None, None, false, false)
-                    .await
-                {
+                match docker.run(image, name, ports, None, None, None, false, false).await {
                     Ok(container) => {
                         let container_json = to_string(&container).unwrap();
                         let container_value: Value = from_str(&container_json).unwrap();
@@ -126,7 +94,8 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
                     }
                     Err(e) => DockerResponse::Error(format!("{:?}", e)),
                 }
-            } else {
+            }
+            else {
                 DockerResponse::Error("Invalid request body".to_string())
             }
         }
@@ -147,8 +116,7 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
             let mut docker = docker.lock().await;
             match docker.stop_container(container_id).await {
                 Ok(_) => {
-                    let response_json =
-                        to_string(&format!("Container {} stopped", container_id)).unwrap();
+                    let response_json = to_string(&format!("Container {} stopped", container_id)).unwrap();
                     let response_value: Value = from_str(&response_json).unwrap();
                     DockerResponse::Ok(response_value)
                 }
@@ -160,8 +128,7 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
             let mut docker = docker.lock().await;
             match docker.remove_container(container_id).await {
                 Ok(_) => {
-                    let response_json =
-                        to_string(&format!("Container {} removed", container_id)).unwrap();
+                    let response_json = to_string(&format!("Container {} removed", container_id)).unwrap();
                     let response_value: Value = from_str(&response_json).unwrap();
                     DockerResponse::Ok(response_value)
                 }
@@ -182,7 +149,8 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
                     }
                     Err(e) => DockerResponse::Error(format!("{:?}", e)),
                 }
-            } else {
+            }
+            else {
                 DockerResponse::Error("Invalid request body".to_string())
             }
         }
@@ -211,7 +179,8 @@ async fn handle_http_request(request: &str, docker: Arc<Mutex<Docker>>) -> Strin
                     }
                     Err(e) => DockerResponse::Error(format!("{:?}", e)),
                 }
-            } else {
+            }
+            else {
                 DockerResponse::Error("Invalid request body".to_string())
             }
         }
@@ -256,7 +225,8 @@ async fn handle_client(mut stream: TcpStream, docker: Arc<Mutex<Docker>>) {
 
     if let Err(e) = stream.write_all(response.as_bytes()).await {
         eprintln!("Error writing to stream: {:?}", e);
-    } else {
+    }
+    else {
         println!("Sent response: {}", response);
     }
 }

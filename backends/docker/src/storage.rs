@@ -2,9 +2,7 @@
 
 //! 存储管理
 
-use std::fs;
-use std::io::Write;
-use std::path::Path;
+use std::{fs, io::Write, path::Path};
 
 use docker_registry::DockerHubService;
 use docker_types::{DockerError, ImageInfo, Result};
@@ -39,10 +37,7 @@ impl StorageService {
             }
         });
 
-        Ok(Self {
-            storage_root,
-            docker_hub,
-        })
+        Ok(Self { storage_root, docker_hub })
     }
 
     /// 获取镜像存储路径
@@ -63,15 +58,13 @@ impl StorageService {
     /// 创建容器存储目录
     pub fn create_container_dir(&self, container_id: &str) -> Result<()> {
         let container_path = self.get_container_path(container_id);
-        fs::create_dir_all(&container_path)
-            .map_err(|e| DockerError::io_error("create_dir_all", e.to_string()))?;
+        fs::create_dir_all(&container_path).map_err(|e| DockerError::io_error("create_dir_all", e.to_string()))?;
 
         // 创建子目录
         let subdirs = ["rootfs", "work", "overlay"];
         for subdir in &subdirs {
             let dir_path = format!("{}/{}", container_path, subdir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::create_dir_all(&dir_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
 
         Ok(())
@@ -81,8 +74,7 @@ impl StorageService {
     pub fn delete_container_dir(&self, container_id: &str) -> Result<()> {
         let container_path = self.get_container_path(container_id);
         if Path::new(&container_path).exists() {
-            fs::remove_dir_all(&container_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::remove_dir_all(&container_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
         Ok(())
     }
@@ -90,8 +82,7 @@ impl StorageService {
     /// 创建卷存储目录
     pub fn create_volume_dir(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
-        fs::create_dir_all(&volume_path)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::create_dir_all(&volume_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         Ok(())
     }
 
@@ -99,21 +90,13 @@ impl StorageService {
     pub fn delete_volume_dir(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
         if Path::new(&volume_path).exists() {
-            fs::remove_dir_all(&volume_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::remove_dir_all(&volume_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
         Ok(())
     }
 
     /// 构建镜像
-    pub async fn build_image(
-        &self,
-        _path: &str,
-        tag: &str,
-        pull: bool,
-        no_cache: bool,
-        force_rm: bool,
-    ) -> Result<ImageInfo> {
+    pub async fn build_image(&self, _path: &str, tag: &str, pull: bool, no_cache: bool, force_rm: bool) -> Result<ImageInfo> {
         // 模拟构建镜像
         // 实际实现中，这些选项会传递给构建过程
         println!("Building image with options:");
@@ -160,8 +143,7 @@ impl StorageService {
     pub async fn delete_image(&self, image_id: &str) -> Result<()> {
         let image_path = self.get_image_path(image_id);
         if Path::new(&image_path).exists() {
-            fs::remove_dir_all(&image_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::remove_dir_all(&image_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
         Ok(())
     }
@@ -192,8 +174,7 @@ impl StorageService {
         let volume_path = self.get_volume_path(&volume_id);
 
         // 创建卷目录
-        fs::create_dir_all(&volume_path)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::create_dir_all(&volume_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         Ok(docker_types::VolumeInfo {
             id: volume_id,
@@ -211,8 +192,7 @@ impl StorageService {
     pub async fn delete_volume(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
         if Path::new(&volume_path).exists() {
-            fs::remove_dir_all(&volume_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::remove_dir_all(&volume_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
         Ok(())
     }
@@ -239,17 +219,14 @@ impl StorageService {
         let logs_path = format!("{}/logs", container_path);
 
         // 确保根文件系统目录存在
-        fs::create_dir_all(&rootfs_path)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::create_dir_all(&rootfs_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 创建日志目录
-        fs::create_dir_all(&logs_path)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::create_dir_all(&logs_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 创建日志文件
         let log_file = format!("{}/container.log", logs_path);
-        fs::File::create(&log_file)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::File::create(&log_file).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 模拟文件系统准备
         // 实际实现中，这里需要：
@@ -259,13 +236,10 @@ impl StorageService {
         // 4. 挂载必要的文件系统（如 /proc, /sys, /dev 等）
 
         // 创建一些必要的目录
-        let dirs = [
-            "bin", "dev", "etc", "home", "lib", "proc", "sys", "tmp", "usr", "var",
-        ];
+        let dirs = ["bin", "dev", "etc", "home", "lib", "proc", "sys", "tmp", "usr", "var"];
         for dir in &dirs {
             let dir_path = format!("{}/{}", rootfs_path, dir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::create_dir_all(&dir_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
 
         // 创建一些必要的文件
@@ -274,27 +248,20 @@ impl StorageService {
             .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         let etc_group = format!("{}/etc/group", rootfs_path);
-        fs::write(etc_group, "root:x:0:\n")
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::write(etc_group, "root:x:0:\n").map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 创建 /bin/sh 脚本
         let bin_sh = format!("{}/bin/sh", rootfs_path);
-        fs::write(
-            bin_sh,
-            "#!/bin/sh\necho \"Hello from container!\"\n/bin/sh\n",
-        )
-        .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::write(bin_sh, "#!/bin/sh\necho \"Hello from container!\"\n/bin/sh\n")
+            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 设置执行权限
         #[cfg(target_os = "linux")]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&bin_sh)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?
-                .permissions();
+            let mut perms = fs::metadata(&bin_sh).map_err(|e| DockerError::io_error("operation", e.to_string()))?.permissions();
             perms.set_mode(0o755);
-            fs::set_permissions(&bin_sh, perms)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::set_permissions(&bin_sh, perms).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
         }
 
         Ok(())
@@ -314,8 +281,7 @@ impl StorageService {
 
         // 写入日志
         let log_entry = format!("[{:?}] {}\n", std::time::SystemTime::now(), message);
-        file.write_all(log_entry.as_bytes())
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        file.write_all(log_entry.as_bytes()).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         Ok(())
     }
@@ -331,8 +297,7 @@ impl StorageService {
         }
 
         // 读取日志文件
-        let content = fs::read_to_string(&log_file)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        let content = fs::read_to_string(&log_file).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 分割日志行
         let logs: Vec<String> = content.lines().map(|line| line.to_string()).collect();
@@ -341,30 +306,21 @@ impl StorageService {
     }
 
     /// 写入容器环境变量
-    pub fn write_container_env(
-        &self,
-        container_id: &str,
-        env: &std::collections::HashMap<String, String>,
-    ) -> Result<()> {
+    pub fn write_container_env(&self, container_id: &str, env: &std::collections::HashMap<String, String>) -> Result<()> {
         let container_path = self.get_container_path(container_id);
         let env_file = format!("{}/env.json", container_path);
 
         // 序列化环境变量
-        let env_content = serde_json::to_string_pretty(env)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let env_content = serde_json::to_string_pretty(env).map_err(|e| DockerError::json_error(e.to_string()))?;
 
         // 写入环境变量文件
-        fs::write(env_file, env_content)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::write(env_file, env_content).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         Ok(())
     }
 
     /// 读取容器环境变量
-    pub fn read_container_env(
-        &self,
-        container_id: &str,
-    ) -> Result<std::collections::HashMap<String, String>> {
+    pub fn read_container_env(&self, container_id: &str) -> Result<std::collections::HashMap<String, String>> {
         let container_path = self.get_container_path(container_id);
         let env_file = format!("{}/env.json", container_path);
 
@@ -374,8 +330,7 @@ impl StorageService {
         }
 
         // 读取环境变量文件
-        let content = fs::read_to_string(&env_file)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        let content = fs::read_to_string(&env_file).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 反序列化环境变量
         let env: std::collections::HashMap<String, String> =
@@ -385,30 +340,22 @@ impl StorageService {
     }
 
     /// 写入容器配置
-    pub fn write_container_config(
-        &self,
-        container_id: &str,
-        config: &docker_types::ContainerConfig,
-    ) -> Result<()> {
+    pub fn write_container_config(&self, container_id: &str, config: &docker_types::ContainerConfig) -> Result<()> {
         let container_path = self.get_container_path(container_id);
         let config_file = format!("{}/config.json", container_path);
 
         // 序列化配置
-        let config_content = serde_json::to_string_pretty(config)
-            .map_err(|e| DockerError::io_error("write_container_config", e.to_string()))?;
+        let config_content =
+            serde_json::to_string_pretty(config).map_err(|e| DockerError::io_error("write_container_config", e.to_string()))?;
 
         // 写入配置文件
-        fs::write(config_file, config_content)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::write(config_file, config_content).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         Ok(())
     }
 
     /// 读取容器配置
-    pub fn read_container_config(
-        &self,
-        container_id: &str,
-    ) -> Result<docker_types::ContainerConfig> {
+    pub fn read_container_config(&self, container_id: &str) -> Result<docker_types::ContainerConfig> {
         let container_path = self.get_container_path(container_id);
         let config_file = format!("{}/config.json", container_path);
 
@@ -418,8 +365,7 @@ impl StorageService {
         }
 
         // 读取配置文件
-        let content = fs::read_to_string(&config_file)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        let content = fs::read_to_string(&config_file).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         // 反序列化配置
         let config: docker_types::ContainerConfig =

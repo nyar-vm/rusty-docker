@@ -1,10 +1,7 @@
 use clap::{Parser, Subcommand};
 use docker::Docker;
 use serde_json::to_string_pretty;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
+use std::{collections::HashMap, fs::File, io::Write, path::Path};
 use uuid;
 
 /// Docker Buildx 命令行工具
@@ -195,10 +192,7 @@ impl BuilderManager {
                 }],
             },
         );
-        Self {
-            builders,
-            current_builder: "default".to_string(),
-        }
+        Self { builders, current_builder: "default".to_string() }
     }
 
     /// 获取当前构建器
@@ -207,22 +201,12 @@ impl BuilderManager {
     }
 
     /// 创建构建器
-    fn create(
-        &mut self,
-        name: Option<String>,
-        driver: String,
-        driver_opt: Vec<String>,
-        platforms: Vec<String>,
-    ) -> String {
+    fn create(&mut self, name: Option<String>, driver: String, driver_opt: Vec<String>, platforms: Vec<String>) -> String {
         let builder_name = name.unwrap_or_else(|| format!("builder-{}", uuid::Uuid::new_v4()));
         let new_platforms = if platforms.is_empty() {
-            vec![
-                "linux/amd64".to_string(),
-                "linux/arm64".to_string(),
-                "linux/arm/v7".to_string(),
-                "linux/arm/v6".to_string(),
-            ]
-        } else {
+            vec!["linux/amd64".to_string(), "linux/arm64".to_string(), "linux/arm/v7".to_string(), "linux/arm/v6".to_string()]
+        }
+        else {
             platforms.clone()
         };
         let new_builder = BuilderInfo {
@@ -248,7 +232,8 @@ impl BuilderManager {
         if self.builders.contains_key(name) {
             self.current_builder = name.to_string();
             true
-        } else {
+        }
+        else {
             false
         }
     }
@@ -264,7 +249,8 @@ impl BuilderManager {
                 self.current_builder = "default".to_string();
             }
             true
-        } else {
+        }
+        else {
             false
         }
     }
@@ -273,11 +259,7 @@ impl BuilderManager {
     fn list(&self, verbose: bool) {
         println!("NAME/NODE    DRIVER/ENDPOINT             STATUS  BUILDKIT   PLATFORMS");
         for (name, builder) in &self.builders {
-            let is_current = if name == &self.current_builder {
-                " *"
-            } else {
-                ""
-            };
+            let is_current = if name == &self.current_builder { " *" } else { "" };
             println!("{}{}    {}", name, is_current, builder.driver);
             for node in &builder.nodes {
                 println!(
@@ -314,7 +296,8 @@ impl BuilderManager {
                     }).collect::<Vec<_>>()
                 });
                 println!("{}", to_string_pretty(&builder_json).unwrap());
-            } else {
+            }
+            else {
                 println!("Builder details:");
                 println!("Name: {}", builder.name);
                 println!("Driver: {}", builder.driver);
@@ -330,7 +313,8 @@ impl BuilderManager {
                     println!("  Platforms: {}", node.platforms.join(", "));
                 }
             }
-        } else {
+        }
+        else {
             eprintln!("Builder '{}' not found", builder_name);
         }
     }
@@ -344,7 +328,8 @@ impl BuilderManager {
                 node.buildkit_version = "v0.12.0".to_string();
             }
             true
-        } else {
+        }
+        else {
             false
         }
     }
@@ -426,10 +411,7 @@ async fn main() {
             // 使用现有的构建功能作为基础，添加多平台支持
             let default_tag = "buildx-image:latest".to_string();
             let image_tag = tag.first().unwrap_or(&default_tag);
-            match docker
-                .build_image(&context, image_tag, pull, no_cache, force_rm)
-                .await
-            {
+            match docker.build_image(&context, image_tag, pull, no_cache, force_rm).await {
                 Ok(image) => {
                     println!("Image built: {}", image.id);
                     // 如果需要推送
@@ -448,13 +430,7 @@ async fn main() {
                 Err(e) => eprintln!("Error building image: {:?}", e),
             }
         }
-        Commands::Create {
-            name,
-            driver,
-            driver_opt,
-            platform,
-            buildkitd_flags: _,
-        } => {
+        Commands::Create { name, driver, driver_opt, platform, buildkitd_flags: _ } => {
             println!("Creating builder...");
             let builder_name = builder_manager.create(name, driver, driver_opt, platform);
             println!("Builder '{}' created successfully", builder_name);
@@ -466,14 +442,16 @@ async fn main() {
         Commands::Use { name } => {
             if builder_manager.use_builder(&name) {
                 println!("Switched to builder {}", name);
-            } else {
+            }
+            else {
                 eprintln!("Builder '{}' not found", name);
             }
         }
         Commands::Rm { name, force } => {
             if builder_manager.remove(&name, force) {
                 println!("Builder {} removed", name);
-            } else {
+            }
+            else {
                 eprintln!("Builder '{}' not found or cannot be removed", name);
             }
         }
@@ -483,7 +461,8 @@ async fn main() {
         Commands::Upgrade { name } => {
             if builder_manager.upgrade(name.as_deref()) {
                 println!("Builder upgraded successfully");
-            } else {
+            }
+            else {
                 eprintln!("Builder not found");
             }
         }
@@ -497,10 +476,7 @@ async fn main() {
             // 模拟卸载过程
             println!("Buildx uninstalled successfully");
         }
-        Commands::Prune {
-            force,
-            keep_storage,
-        } => {
+        Commands::Prune { force, keep_storage } => {
             println!("Pruning build cache...");
             if let Some(keep) = keep_storage {
                 println!("Keeping storage: {}", keep);

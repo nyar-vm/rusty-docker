@@ -79,10 +79,7 @@ async fn main() {
     };
 
     match cli.command {
-        Commands::Run { image, name, port } => match docker
-            .run(image, name, port, None, None, None, false, false)
-            .await
-        {
+        Commands::Run { image, name, port } => match docker.run(image, name, port, None, None, None, false, false).await {
             Ok(container) => println!("Container created: {}", container.id),
             Err(e) => eprintln!("Error running container: {:?}", e),
         },
@@ -102,19 +99,12 @@ async fn main() {
             Ok(_) => println!("Container removed: {}", container),
             Err(e) => eprintln!("Error removing container: {:?}", e),
         },
-        Commands::Build {
-            context,
-            tag,
-            dockerfile: _,
-            no_cache,
-            target: _,
-        } => match docker
-            .build_image(&context, &tag, false, no_cache, false)
-            .await
-        {
-            Ok(image) => println!("Image built: {}", image.id),
-            Err(e) => eprintln!("Error building image: {:?}", e),
-        },
+        Commands::Build { context, tag, dockerfile: _, no_cache, target: _ } => {
+            match docker.build_image(&context, &tag, false, no_cache, false).await {
+                Ok(image) => println!("Image built: {}", image.id),
+                Err(e) => eprintln!("Error building image: {:?}", e),
+            }
+        }
         Commands::Images => match docker.list_images().await {
             Ok(images) => {
                 for image in images {

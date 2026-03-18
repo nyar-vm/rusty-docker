@@ -1,7 +1,4 @@
-use std::fs;
-use std::path::Path;
-use std::process::Command;
-use std::str;
+use std::{fs, path::Path, process::Command, str};
 
 #[test]
 fn test_kustomize_version() {
@@ -59,12 +56,9 @@ fn test_kustomize_build() {
     fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
     // 创建 kustomization.yaml 文件
-    let kustomization_content = "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
-    fs::write(
-        format!("{}/kustomization.yaml", test_dir),
-        kustomization_content,
-    )
-    .expect("Failed to write kustomization.yaml");
+    let kustomization_content =
+        "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
+    fs::write(format!("{}/kustomization.yaml", test_dir), kustomization_content).expect("Failed to write kustomization.yaml");
 
     // 测试 build 命令
     let output = Command::new("cargo")
@@ -98,12 +92,9 @@ fn test_kustomize_validate() {
     fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
     // 创建 kustomization.yaml 文件
-    let kustomization_content = "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
-    fs::write(
-        format!("{}/kustomization.yaml", test_dir),
-        kustomization_content,
-    )
-    .expect("Failed to write kustomization.yaml");
+    let kustomization_content =
+        "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
+    fs::write(format!("{}/kustomization.yaml", test_dir), kustomization_content).expect("Failed to write kustomization.yaml");
 
     // 测试 validate 命令
     let output = Command::new("cargo")
@@ -134,12 +125,9 @@ fn test_kustomize_config_view() {
     fs::create_dir_all(test_dir).expect("Failed to create test directory");
 
     // 创建 kustomization.yaml 文件
-    let kustomization_content = "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
-    fs::write(
-        format!("{}/kustomization.yaml", test_dir),
-        kustomization_content,
-    )
-    .expect("Failed to write kustomization.yaml");
+    let kustomization_content =
+        "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- service.yaml\n- deployment.yaml\n";
+    fs::write(format!("{}/kustomization.yaml", test_dir), kustomization_content).expect("Failed to write kustomization.yaml");
 
     // 测试 config view 命令
     let output = Command::new("cargo")

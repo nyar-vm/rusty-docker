@@ -2,8 +2,7 @@
 
 //! 容器运行时
 
-use std::sync::Arc;
-use std::time::SystemTime;
+use std::{sync::Arc, time::SystemTime};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -43,18 +42,12 @@ impl ContainerRuntime {
             },
         };
 
-        Ok(Self {
-            config: Arc::new(default_config),
-            containers: Arc::new(RwLock::new(vec![])),
-        })
+        Ok(Self { config: Arc::new(default_config), containers: Arc::new(RwLock::new(vec![])) })
     }
 
     /// 使用配置创建新的容器运行时
     pub fn new_with_config(config: Arc<DockerConfig>) -> Result<Self> {
-        Ok(Self {
-            config,
-            containers: Arc::new(RwLock::new(vec![])),
-        })
+        Ok(Self { config, containers: Arc::new(RwLock::new(vec![])) })
     }
 
     /// 获取配置
@@ -110,12 +103,8 @@ impl ContainerRuntime {
 
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
-            if container.status != ContainerStatus::Creating
-                && container.status != ContainerStatus::Stopped
-            {
-                return Err(DockerError::container_error(
-                    "Container is not in a state to start".to_string(),
-                ));
+            if container.status != ContainerStatus::Creating && container.status != ContainerStatus::Stopped {
+                return Err(DockerError::container_error("Container is not in a state to start".to_string()));
             }
 
             // 启动容器（这里是简化实现）
@@ -131,11 +120,9 @@ impl ContainerRuntime {
             container.pid = Some(12345); // 模拟 PID
 
             Ok(())
-        } else {
-            Err(DockerError::not_found(
-                "container",
-                format!("Container {} not found", container_id),
-            ))
+        }
+        else {
+            Err(DockerError::not_found("container", format!("Container {} not found", container_id)))
         }
     }
 
@@ -146,9 +133,7 @@ impl ContainerRuntime {
         if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
             // 检查状态
             if container.status != ContainerStatus::Running {
-                return Err(DockerError::container_error(
-                    "Container is not in a running state".to_string(),
-                ));
+                return Err(DockerError::container_error("Container is not in a running state".to_string()));
             }
 
             // 模拟停止
@@ -157,29 +142,17 @@ impl ContainerRuntime {
             container.pid = None;
 
             Ok(())
-        } else {
-            Err(DockerError::not_found(
-                "container",
-                format!("Container {} not found", container_id),
-            ))
+        }
+        else {
+            Err(DockerError::not_found("container", format!("Container {} not found", container_id)))
         }
     }
 
     /// 运行容器
-    pub async fn run_container(
-        &self,
-        image: String,
-        name: Option<String>,
-        _ports: Vec<String>,
-    ) -> Result<ContainerInfo> {
+    pub async fn run_container(&self, image: String, name: Option<String>, _ports: Vec<String>) -> Result<ContainerInfo> {
         // 创建容器配置
         let config = ContainerConfig {
-            name: name.unwrap_or_else(|| {
-                format!(
-                    "container-{}",
-                    Uuid::new_v4().to_string().split('-').next().unwrap()
-                )
-            }),
+            name: name.unwrap_or_else(|| format!("container-{}", Uuid::new_v4().to_string().split('-').next().unwrap())),
             image,
             command: vec!["/bin/sh".to_string()],
             environment: Default::default(),
@@ -212,12 +185,9 @@ impl ContainerRuntime {
 
         if all {
             Ok(containers.clone())
-        } else {
-            Ok(containers
-                .iter()
-                .filter(|c| c.status == ContainerStatus::Running)
-                .cloned()
-                .collect())
+        }
+        else {
+            Ok(containers.iter().filter(|c| c.status == ContainerStatus::Running).cloned().collect())
         }
     }
 
@@ -229,20 +199,16 @@ impl ContainerRuntime {
             // 检查状态
             let container = &containers[index];
             if container.status == ContainerStatus::Running {
-                return Err(DockerError::container_error(
-                    "Cannot remove a running container".to_string(),
-                ));
+                return Err(DockerError::container_error("Cannot remove a running container".to_string()));
             }
 
             // 移除容器
             containers.remove(index);
 
             Ok(())
-        } else {
-            Err(DockerError::not_found(
-                "container",
-                format!("Container {} not found", container_id),
-            ))
+        }
+        else {
+            Err(DockerError::not_found("container", format!("Container {} not found", container_id)))
         }
     }
 }

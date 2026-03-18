@@ -35,8 +35,7 @@ impl NamespaceManager {
         let namespace_path = "./rusty-docker/namespaces".to_string();
 
         // 创建命名空间目录
-        fs::create_dir_all(&namespace_path)
-            .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+        fs::create_dir_all(&namespace_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
         Ok(Self { namespace_path })
     }
@@ -45,8 +44,7 @@ impl NamespaceManager {
     pub fn create_namespace(&self, ns_type: NamespaceType) -> Result<i32> {
         #[cfg(target_os = "linux")]
         {
-            use nix::sched;
-            use nix::unistd;
+            use nix::{sched, unistd};
 
             // 创建子进程
             match unistd::fork() {
@@ -74,10 +72,7 @@ impl NamespaceManager {
                     // 子进程继续运行
                     Ok(0)
                 }
-                Err(e) => Err(DockerError::io_error(
-                    "fork_failed",
-                    format!("Fork failed: {}", e),
-                )),
+                Err(e) => Err(DockerError::io_error("fork_failed", format!("Fork failed: {}", e))),
             }
         }
 
@@ -92,48 +87,37 @@ impl NamespaceManager {
     pub fn enter_namespace(&self, ns_path: &str) -> Result<()> {
         #[cfg(target_os = "linux")]
         {
-            use nix::fcntl;
-            use nix::sched;
-            use nix::unistd;
+            use nix::{fcntl, sched, unistd};
 
             // 打开命名空间文件
-            let fd = fcntl::open(
-                ns_path,
-                fcntl::OFlag::O_RDONLY,
-                nix::sys::stat::Mode::empty(),
-            )
-            .map_err(|e| {
-                DockerError::io_error(
-                    "open_ns_file",
-                    format!("Failed to open namespace file: {}", e),
-                )
-            })?;
+            let fd = fcntl::open(ns_path, fcntl::OFlag::O_RDONLY, nix::sys::stat::Mode::empty())
+                .map_err(|e| DockerError::io_error("open_ns_file", format!("Failed to open namespace file: {}", e)))?;
 
             // 进入命名空间
             let ns_type = if ns_path.ends_with("-pid") {
                 sched::CloneFlags::CLONE_NEWPID
-            } else if ns_path.ends_with("-net") {
+            }
+            else if ns_path.ends_with("-net") {
                 sched::CloneFlags::CLONE_NEWNET
-            } else if ns_path.ends_with("-mnt") {
+            }
+            else if ns_path.ends_with("-mnt") {
                 sched::CloneFlags::CLONE_NEWNS
-            } else if ns_path.ends_with("-uts") {
+            }
+            else if ns_path.ends_with("-uts") {
                 sched::CloneFlags::CLONE_NEWUTS
-            } else if ns_path.ends_with("-ipc") {
+            }
+            else if ns_path.ends_with("-ipc") {
                 sched::CloneFlags::CLONE_NEWIPC
-            } else if ns_path.ends_with("-user") {
+            }
+            else if ns_path.ends_with("-user") {
                 sched::CloneFlags::CLONE_NEWUSER
-            } else {
-                return Err(DockerError::io_error(
-                    "unknown_ns_type",
-                    "Unknown namespace type",
-                ));
+            }
+            else {
+                return Err(DockerError::io_error("unknown_ns_type", "Unknown namespace type"));
             };
 
             if let Err(e) = sched::setns(fd, ns_type) {
-                return Err(DockerError::io_error(
-                    "enter_ns",
-                    format!("Failed to enter namespace: {}", e),
-                ));
+                return Err(DockerError::io_error("enter_ns", format!("Failed to enter namespace: {}", e)));
             }
 
             // 关闭文件描述符
@@ -164,12 +148,7 @@ impl NamespaceManager {
     }
 
     /// 保存命名空间
-    pub fn save_namespace(
-        &self,
-        container_id: &str,
-        ns_type: NamespaceType,
-        pid: i32,
-    ) -> Result<()> {
+    pub fn save_namespace(&self, container_id: &str, ns_type: NamespaceType, pid: i32) -> Result<()> {
         #[cfg(target_os = "linux")]
         {
             let ns_path = self.get_namespace_path(container_id, ns_type);
@@ -190,8 +169,7 @@ impl NamespaceManager {
             if std::path::Path::new(&ns_path).exists() {
                 std::fs::remove_file(&ns_path).ok();
             }
-            std::os::unix::fs::symlink(src_path, ns_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            std::os::unix::fs::symlink(src_path, ns_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             Ok(())
         }

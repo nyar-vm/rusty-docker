@@ -233,24 +233,9 @@ async fn main() {
     };
 
     match cli.command {
-        Commands::Init {
-            advertise_addr,
-            auto_lock,
-            default_addr_pool,
-            force_new_cluster,
-            subnet_size,
-        } => {
+        Commands::Init { advertise_addr, auto_lock, default_addr_pool, force_new_cluster, subnet_size } => {
             println!("Initializing Swarm cluster...");
-            match docker
-                .swarm_init(
-                    advertise_addr,
-                    auto_lock,
-                    default_addr_pool,
-                    force_new_cluster,
-                    subnet_size,
-                )
-                .await
-            {
+            match docker.swarm_init(advertise_addr, auto_lock, default_addr_pool, force_new_cluster, subnet_size).await {
                 Ok(_) => {
                     println!("Swarm initialized successfully");
                     println!("To add a worker to this swarm, run:");
@@ -268,17 +253,9 @@ async fn main() {
                 }
             }
         }
-        Commands::Join {
-            token,
-            advertise_addr,
-            listen_addr,
-            manager_addr,
-        } => {
+        Commands::Join { token, advertise_addr, listen_addr, manager_addr } => {
             println!("Joining Swarm cluster...");
-            match docker
-                .swarm_join(token, advertise_addr, listen_addr, manager_addr)
-                .await
-            {
+            match docker.swarm_join(token, advertise_addr, listen_addr, manager_addr).await {
                 Ok(_) => {
                     println!("Joined Swarm cluster successfully");
                 }
@@ -288,10 +265,7 @@ async fn main() {
                 }
             }
         }
-        Commands::JoinToken {
-            token_type: _,
-            rotate: _,
-        } => {
+        Commands::JoinToken { token_type: _, rotate: _ } => {
             println!("Managing join token");
             println!("Join token feature not implemented yet");
         }
@@ -330,10 +304,7 @@ async fn main() {
                     restart_delay: _,
                 } => {
                     println!("Creating service...");
-                    match docker
-                        .create_service(name, image, publish, replicas, env, mount)
-                        .await
-                    {
+                    match docker.create_service(name, image, publish, replicas, env, mount).await {
                         Ok(service) => {
                             println!("Service created successfully");
                             println!("ID: {}", service.id);
@@ -358,9 +329,7 @@ async fn main() {
                                 let ports_str = service
                                     .ports
                                     .iter()
-                                    .map(|(host, container)| {
-                                        format!("*:{}->{}tcp", host, container)
-                                    })
+                                    .map(|(host, container)| format!("*:{}->{}tcp", host, container))
                                     .collect::<Vec<_>>()
                                     .join(", ");
                                 println!(
@@ -444,20 +413,18 @@ async fn main() {
                                     std::process::exit(1);
                                 }
                             }
-                        } else {
+                        }
+                        else {
                             eprintln!("Invalid replicas count: {}", replicas_str);
                             std::process::exit(1);
                         }
-                    } else {
+                    }
+                    else {
                         eprintln!("Invalid service scaling format. Use service=replicas");
                         std::process::exit(1);
                     }
                 }
-                ServiceCommands::Logs {
-                    service: _,
-                    tail: _,
-                    follow: _,
-                } => {
+                ServiceCommands::Logs { service: _, tail: _, follow: _ } => {
                     println!("Fetching logs for service");
                     println!("Service logs feature not implemented yet");
                 }
@@ -513,11 +480,7 @@ async fn main() {
                     }
                 }
             }
-            NodeCommands::Update {
-                node,
-                role,
-                availability,
-            } => {
+            NodeCommands::Update { node, role, availability } => {
                 println!("Updating node: {}", node);
                 match docker.update_node(&node, role, availability).await {
                     Ok(node_info) => {
@@ -582,17 +545,9 @@ async fn main() {
                 }
             }
         }
-        Commands::Update {
-            auto_lock,
-            default_addr_pool,
-            subnet_size,
-            max_managers: _,
-        } => {
+        Commands::Update { auto_lock, default_addr_pool, subnet_size, max_managers: _ } => {
             println!("Updating Swarm cluster...");
-            match docker
-                .swarm_update(auto_lock, default_addr_pool, subnet_size)
-                .await
-            {
+            match docker.swarm_update(auto_lock, default_addr_pool, subnet_size).await {
                 Ok(_) => {
                     println!("Swarm cluster updated successfully");
                 }

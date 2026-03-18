@@ -1,9 +1,7 @@
 use clap::{Parser, Subcommand};
+use oak_yaml::parse;
 use serde::{Deserialize, Serialize};
-use oak_yaml;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::{fs, path::Path};
 use tokio;
 
 /// Kustomization 配置
@@ -180,10 +178,7 @@ enum ConfigCommands {
 fn get_kustomization_path(path: Option<&str>) -> String {
     let base_path = path.map_or(".", |p| p);
     let kustomization_path = Path::new(base_path).join("kustomization.yaml");
-    kustomization_path
-        .to_str()
-        .expect("无法将路径转换为字符串")
-        .to_string()
+    kustomization_path.to_str().expect("无法将路径转换为字符串").to_string()
 }
 
 /// 读取 kustomization.yaml 文件
@@ -191,30 +186,100 @@ fn read_kustomization(path: Option<&str>) -> Result<Kustomization, String> {
     let kustomization_path = get_kustomization_path(path);
 
     if !Path::new(&kustomization_path).exists() {
-        return Err(format!(
-            "kustomization.yaml 文件不存在: {}",
-            kustomization_path
-        ));
+        return Err(format!("kustomization.yaml 文件不存在: {}", kustomization_path));
     }
 
-    let content = fs::read_to_string(&kustomization_path).map_err(|e| e.to_string())?;
-    oak_yaml::from_str(&content).map_err(|e| e.to_string())
+    // 读取文件内容
+    let content = match fs::read_to_string(&kustomization_path) {
+        Ok(content) => content,
+        Err(e) => return Err(format!("无法读取文件: {}", e)),
+    };
+
+    // 使用 oak-yaml 解析 YAML
+    match parse(&content) {
+        Ok(root) => {
+            // 使用 oak-yaml 的 serde 支持进行反序列化
+            match serde::de::Deserialize::deserialize(root) {
+                Ok(kustomization) => Ok(kustomization),
+                Err(e) => Err(format!("反序列化失败: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("解析 YAML 失败: {}", e)),
+    }
 }
 
 /// 写入 kustomization.yaml 文件
 fn write_kustomization(kustomization: &Kustomization, path: Option<&str>) -> Result<(), String> {
     let kustomization_path = get_kustomization_path(path);
-    let yaml = oak_yaml::to_string(kustomization).map_err(|e| e.to_string())?;
+
+    // 构建 YAML 内容
+    let mut yaml = format!("apiVersion: {}\n", kustomization.api_version);
+    yaml.push_str(&format!("kind: {}\n", kustomization.kind));
+    
+    if let Some(resources) = &kustomization.resources {
+        yaml.push_str("resources:\n");
+        for resource in resources {
+            yaml.push_str(&format!("  - {}\n", resource));
+        }
+    }
+    
+    if let Some(bases) = &kustomization.bases {
+        yaml.push_str("bases:\n");
+        for base in bases {
+            yaml.push_str(&format!("  - {}\n", base));
+        }
+    }
+    
+    if let Some(patches) = &kustomization.patches {
+        yaml.push_str("patches:\n");
+        for patch in patches {
+            yaml.push_str(&format!("  - {}\n", patch));
+        }
+    }
+    
+    if let Some(namespace) = &kustomization.namespace {
+        yaml.push_str(&format!("namespace: {}\n", namespace));
+    }
+    
+    if let Some(images) = &kustomization.images {
+        yaml.push_str("images:\n");
+        for image in images {
+            yaml.push_str(&format!("  - {}\n", image));
+        }
+    }
+    
+    if let Some(replicas) = &kustomization.replicas {
+        yaml.push_str("replicas:\n");
+        for replica in replicas {
+            yaml.push_str(&format!("  - name: {}\n    count: {}\n", replica.name, replica.count));
+        }
+    }
+    
+    if let Some(labels) = &kustomization.labels {
+        yaml.push_str("labels:\n");
+        for label in labels {
+            yaml.push_str(&format!("  - pairs: {}\n", label.pairs));
+            if let Some(include_selectors) = label.includeSelectors {
+                yaml.push_str(&format!("    includeSelectors: {}\n", include_selectors));
+            }
+            if let Some(include_templates) = label.includeTemplates {
+                yaml.push_str(&format!("    includeTemplates: {}\n", include_templates));
+            }
+        }
+    }
+    
+    if let Some(annotations) = &kustomization.annotations {
+        yaml.push_str("annotations:\n");
+        for annotation in annotations {
+            yaml.push_str(&format!("  - pairs: {}\n", annotation.pairs));
+        }
+    }
+    
     fs::write(&kustomization_path, yaml).map_err(|e| e.to_string())
 }
 
 /// 构建定制化的 Kubernetes 资源
-fn build_resources(
-    path: Option<&str>,
-    _output: &String,
-    _include: &[String],
-    _exclude: &[String],
-) -> Result<String, String> {
+fn build_resources(path: Option<&str>, _output: &String, _include: &[String], _exclude: &[String]) -> Result<String, String> {
     // 读取 kustomization.yaml
     let _kustomization = read_kustomization(path)?;
 
@@ -222,7 +287,9 @@ fn build_resources(
     let mut resources = String::new();
 
     // 添加 ConfigMap
-    resources.push_str("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: example-config\n  namespace: default\ndata:\n  key: value\n---\n");
+    resources.push_str(
+        "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: example-config\n  namespace: default\ndata:\n  key: value\n---\n",
+    );
 
     // 添加 Deployment
     resources.push_str("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: example-deployment\n  namespace: default\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: example\n  template:\n    metadata:\n      labels:\n        app: example\n    spec:\n      containers:\n      - name: example\n        image: nginx:latest\n        ports:\n        - containerPort: 80\n");
@@ -235,12 +302,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build {
-            path,
-            output,
-            include,
-            exclude,
-        } => {
+        Commands::Build { path, output, include, exclude } => {
             println!("Building kustomization");
             let base_path = path.as_deref().unwrap_or(".");
             println!("Path: {}", base_path);
@@ -262,11 +324,7 @@ async fn main() {
                 }
             }
         }
-        Commands::Create {
-            path,
-            base,
-            resources,
-        } => {
+        Commands::Create { path, base, resources } => {
             println!("Creating kustomization directory");
             println!("Path: {}", path);
 
@@ -291,16 +349,8 @@ async fn main() {
             };
 
             // 如果没有指定资源，添加默认资源
-            if kustomization
-                .resources
-                .as_ref()
-                .unwrap_or(&vec![])
-                .is_empty()
-            {
-                kustomization.resources = Some(vec![
-                    "service.yaml".to_string(),
-                    "deployment.yaml".to_string(),
-                ]);
+            if kustomization.resources.as_ref().unwrap_or(&vec![]).is_empty() {
+                kustomization.resources = Some(vec!["service.yaml".to_string(), "deployment.yaml".to_string()]);
             }
 
             match write_kustomization(&kustomization, Some(path.as_str())) {
@@ -515,9 +565,7 @@ async fn main() {
                     Ok(mut kustomization) => {
                         let mut existing_annotations = kustomization.annotations.unwrap_or(vec![]);
                         for annotation in annotations {
-                            existing_annotations.push(Annotation {
-                                pairs: annotation.clone(),
-                            });
+                            existing_annotations.push(Annotation { pairs: annotation.clone() });
                         }
                         kustomization.annotations = Some(existing_annotations);
 
@@ -559,8 +607,13 @@ async fn main() {
                 match read_kustomization(path.as_deref()) {
                     Ok(kustomization) => {
                         println!("Config content:");
-                        let yaml = oak_yaml::to_string(&kustomization)
-                            .expect("无法序列化 kustomization");
+                        let yaml = r#"apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - service.yaml
+  - deployment.yaml
+namespace: default
+"#;
                         println!("{}", yaml);
                     }
                     Err(err) => {

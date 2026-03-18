@@ -5,8 +5,10 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{Duration, sleep};
+use tokio::{
+    sync::Mutex,
+    time::{Duration, sleep},
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -107,10 +109,7 @@ impl KubeProxyState {
                 protocol: "TCP".to_string(),
                 node_port: None,
             }],
-            endpoints: vec![Endpoint {
-                ip: "127.0.0.1".to_string(),
-                port: 6443,
-            }],
+            endpoints: vec![Endpoint { ip: "127.0.0.1".to_string(), port: 6443 }],
         }];
     }
 
@@ -141,11 +140,6 @@ async fn main() {
     println!("Node name: {}", cli.node_name);
     println!("Sync period: {}s", cli.sync_period);
 
-    let mut state = KubeProxyState::new(
-        &cli.master,
-        &cli.node_name,
-        &cli.proxy_mode,
-        cli.sync_period,
-    );
+    let mut state = KubeProxyState::new(&cli.master, &cli.node_name, &cli.proxy_mode, cli.sync_period);
     state.run().await;
 }

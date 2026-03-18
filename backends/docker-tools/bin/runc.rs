@@ -66,10 +66,7 @@ async fn main() {
 
     match cli.command {
         Commands::Run { image, name, port } => {
-            let container = docker
-                .run(image, name, port, None, None, None, false, false)
-                .await
-                .unwrap();
+            let container = docker.run(image, name, port, None, None, None, false, false).await.unwrap();
             println!("Container created: {}", container.id);
         }
         Commands::Ps { all } => {
@@ -87,10 +84,7 @@ async fn main() {
             println!("Container removed: {}", container);
         }
         Commands::Build { path, tag } => {
-            let image = docker
-                .build_image(&path, &tag, false, false, false)
-                .await
-                .unwrap();
+            let image = docker.build_image(&path, &tag, false, false, false).await.unwrap();
             println!("Image built: {}", image.id);
         }
         Commands::Images => {

@@ -137,12 +137,8 @@ async fn main() {
             println!("\n[init] Using Kubernetes version: v1.28.0");
             println!("[preflight] Running pre-flight checks");
             println!("[preflight] Pulling images required for setting up a Kubernetes cluster");
-            println!(
-                "[preflight] This might take a minute or two, depending on the speed of your internet connection"
-            );
-            println!(
-                "[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'"
-            );
+            println!("[preflight] This might take a minute or two, depending on the speed of your internet connection");
+            println!("[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'");
             println!("[certs] Using certificateDir folder \"/etc/kubernetes/pki\"");
             println!("[certs] Generating \"ca\" certificate and key");
             println!("[certs] Generating \"apiserver\" certificate and key");
@@ -168,35 +164,25 @@ async fn main() {
             println!(
                 "[kubelet-start] Writing kubelet environment file with flags to file \"/var/lib/kubelet/kubeadm-flags.env\""
             );
-            println!(
-                "[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\""
-            );
+            println!("[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\"");
             println!("[kubelet-start] Starting the kubelet");
             println!("[control-plane] Using manifest folder \"/etc/kubernetes/manifests\"");
             println!("[control-plane] Creating static Pod manifest for \"kube-apiserver\"");
-            println!(
-                "[control-plane] Creating static Pod manifest for \"kube-controller-manager\""
-            );
+            println!("[control-plane] Creating static Pod manifest for \"kube-controller-manager\"");
             println!("[control-plane] Creating static Pod manifest for \"kube-scheduler\"");
-            println!(
-                "[etcd] Creating static Pod manifest for local etcd in \"/etc/kubernetes/manifests\""
-            );
+            println!("[etcd] Creating static Pod manifest for local etcd in \"/etc/kubernetes/manifests\"");
             println!(
                 "[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory \"/etc/kubernetes/manifests\""
             );
             println!("[wait-control-plane] This can take up to 4m0s");
-            println!(
-                "[apiclient] All control plane components are healthy after 10.501917 seconds"
-            );
+            println!("[apiclient] All control plane components are healthy after 10.501917 seconds");
             println!(
                 "[upload-config] Storing the configuration used in ConfigMap \"kubeadm-config\" in the \"kube-system\" Namespace"
             );
             println!(
                 "[kubelet] Creating a ConfigMap \"kubelet-config\" in namespace kube-system with the configuration for the kubelets in the cluster"
             );
-            println!(
-                "[upload-certs] Skipping phase. Please see --upload-certs option in kubeadm init."
-            );
+            println!("[upload-certs] Skipping phase. Please see --upload-certs option in kubeadm init.");
             println!(
                 "[mark-control-plane] Marking the node localhost as control-plane by adding the labels: [node-role.kubernetes.io/control-plane node.kubernetes.io/exclude-from-external-load-balancers]"
             );
@@ -204,12 +190,8 @@ async fn main() {
                 "[mark-control-plane] Marking the node localhost as control-plane by adding the taints [node-role.kubernetes.io/control-plane:NoSchedule]"
             );
             println!("[bootstrap-token] Using token: abcdef.0123456789abcdef");
-            println!(
-                "[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles"
-            );
-            println!(
-                "[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes"
-            );
+            println!("[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles");
+            println!("[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes");
             println!(
                 "[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials"
             );
@@ -219,48 +201,31 @@ async fn main() {
             println!(
                 "[bootstrap-token] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster"
             );
-            println!(
-                "[bootstrap-token] Creating the \"cluster-info\" ConfigMap in the \"kube-public\" namespace"
-            );
+            println!("[bootstrap-token] Creating the \"cluster-info\" ConfigMap in the \"kube-public\" namespace");
             println!("[addons] Applied essential addon: CoreDNS");
             println!("[addons] Applied essential addon: kube-proxy");
 
             println!("\nYour Kubernetes control-plane has initialized successfully!");
-            println!(
-                "\nTo start using your cluster, you need to run the following as a regular user:"
-            );
+            println!("\nTo start using your cluster, you need to run the following as a regular user:");
             println!("\n  mkdir -p $HOME/.kube");
             println!("  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config");
             println!("  sudo chown $(id -u):$(id -g) $HOME/.kube/config");
             println!("\nAlternatively, if you are the root user, you can run:");
             println!("\n  export KUBECONFIG=/etc/kubernetes/admin.conf");
             println!("\nYou should now deploy a Pod network to the cluster.");
-            println!(
-                "Run \"kubectl apply -f [podnetwork].yaml\" with one of the options listed at:"
-            );
+            println!("Run \"kubectl apply -f [podnetwork].yaml\" with one of the options listed at:");
             println!("  https://kubernetes.io/docs/concepts/cluster-administration/addons/");
-            println!(
-                "\nThen you can join any number of worker nodes by running the following on each as root:"
-            );
+            println!("\nThen you can join any number of worker nodes by running the following on each as root:");
             println!("\nkubeadm join 192.168.1.100:6443 --token abcdef.0123456789abcdef ");
             println!(
                 "    --discovery-token-ca-cert-hash sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
             );
         }
-        Commands::Join {
-            control_plane_address,
-            token,
-            discovery_token_ca_cert_hash,
-            control_plane,
-            node_name,
-        } => {
+        Commands::Join { control_plane_address, token, discovery_token_ca_cert_hash, control_plane, node_name } => {
             println!("Joining Kubernetes cluster");
             println!("Control plane address: {}", control_plane_address);
             println!("Token: {}", token);
-            println!(
-                "Discovery token CA cert hash: {}",
-                discovery_token_ca_cert_hash
-            );
+            println!("Discovery token CA cert hash: {}", discovery_token_ca_cert_hash);
             if control_plane {
                 println!("Joining as control plane node");
             }
@@ -276,17 +241,13 @@ async fn main() {
             println!(
                 "[kubelet-start] Writing kubelet environment file with flags to file \"/var/lib/kubelet/kubeadm-flags.env\""
             );
-            println!(
-                "[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\""
-            );
+            println!("[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\"");
             println!("[kubelet-start] Starting the kubelet");
             println!("[join] Reading configuration from the cluster...");
             println!(
                 "[join] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'"
             );
-            println!(
-                "[join] Detected control-plane node, will perform join to another control-plane node"
-            );
+            println!("[join] Detected control-plane node, will perform join to another control-plane node");
             println!("[join] Requesting to join control plane");
             println!("[join] Waiting for approval from existing control-plane nodes");
             println!("[join] Approved by existing control-plane node");
@@ -311,12 +272,8 @@ async fn main() {
                 "[mark-control-plane] Marking the node node1 as control-plane by adding the taints [node-role.kubernetes.io/control-plane:NoSchedule]"
             );
 
-            println!(
-                "\nThis node has joined the cluster and a new control plane instance was created:"
-            );
-            println!(
-                "\n* Certificate signing request was sent to apiserver and approval was received."
-            );
+            println!("\nThis node has joined the cluster and a new control plane instance was created:");
+            println!("\n* Certificate signing request was sent to apiserver and approval was received.");
             println!("* The Kubelet was informed of the new secure connection details.");
             println!("* Control plane (master) label and taint were applied to the new node.");
             println!("* The Kubernetes control plane instances scaled up.");
@@ -338,9 +295,7 @@ async fn main() {
             }
             TokenCommands::List => {
                 println!("Listing join tokens");
-                println!(
-                    "TOKEN                     TTL         EXPIRES                     USAGES                   GROUPS"
-                );
+                println!("TOKEN                     TTL         EXPIRES                     USAGES                   GROUPS");
                 println!(
                     "abcdef.0123456789abcdef   23h         2024-01-02T12:00:00Z        signing,authentication   system:bootstrappers:kubeadm:default-node-token"
                 );
@@ -360,12 +315,8 @@ async fn main() {
                     "[upgrade/config] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'"
                 );
                 println!("[preflight] Running pre-flight checks.");
-                println!(
-                    "[upgrade] This cluster was originally configured using an older version of kubeadm"
-                );
-                println!(
-                    "[upgrade] Detected that the cluster uses the CRI socket /var/run/dockershim.sock"
-                );
+                println!("[upgrade] This cluster was originally configured using an older version of kubeadm");
+                println!("[upgrade] Detected that the cluster uses the CRI socket /var/run/dockershim.sock");
                 println!("[upgrade] Looking for available upgrades for Kubernetes v1.27.0");
                 println!("[upgrade] Latest version in the v1.27 series is v1.27.4");
                 println!("[upgrade] The machine needs to be upgraded to v1.27.4");
@@ -379,15 +330,11 @@ async fn main() {
                 );
                 println!("[preflight] Running pre-flight checks.");
                 println!("[upgrade/version] You have chosen to upgrade to version v1.27.4");
-                println!(
-                    "[upgrade/prepull] Pulling images required for setting up a Kubernetes cluster"
-                );
+                println!("[upgrade/prepull] Pulling images required for setting up a Kubernetes cluster");
                 println!(
                     "[upgrade/prepull] This might take a minute or two, depending on the speed of your internet connection"
                 );
-                println!(
-                    "[upgrade/apply] Upgrading your Static Pod-hosted control plane to version v1.27.4"
-                );
+                println!("[upgrade/apply] Upgrading your Static Pod-hosted control plane to version v1.27.4");
                 println!("[upgrade/etcd] Upgrading to etcd version 3.5.7-0");
                 println!(
                     "[upgrade/staticpods] Writing new Static Pod manifests to /etc/kubernetes/tmp/kubeadm-upgrade-XXXXXX/manifests"
@@ -395,19 +342,13 @@ async fn main() {
                 println!(
                     "[upgrade/staticpods] This might take a minute or two, depending on the speed of your internet connection"
                 );
-                println!(
-                    "[upgrade/staticpods] Waiting for the kubelet to restart the control plane containers"
-                );
+                println!("[upgrade/staticpods] Waiting for the kubelet to restart the control plane containers");
                 println!(
                     "[upgrade/staticpods] This might take a minute or two, depending on the speed of your internet connection"
                 );
-                println!(
-                    "[upgrade/staticpods] Control plane containers are now running at version v1.27.4"
-                );
+                println!("[upgrade/staticpods] Control plane containers are now running at version v1.27.4");
                 println!("[upgrade/postupgrade] Applying the new configuration to the kubelet");
-                println!(
-                    "[upgrade/postupgrade] The kubelet was successfully upgraded to version v1.27.4"
-                );
+                println!("[upgrade/postupgrade] The kubelet was successfully upgraded to version v1.27.4");
             }
             UpgradeCommands::Complete => {
                 println!("Completing Kubernetes upgrade");
@@ -425,23 +366,17 @@ async fn main() {
             if force {
                 println!("Forcing reset without confirmation");
             }
-            println!(
-                "[reset] WARNING: Changes made to this host by 'kubeadm init' or 'kubeadm join' will be reverted"
-            );
+            println!("[reset] WARNING: Changes made to this host by 'kubeadm init' or 'kubeadm join' will be reverted");
             println!("[reset] Are you sure you want to proceed? [y/N]: y");
             println!("[preflight] Running pre-flight checks");
             println!(
                 "[reset] Removing info for node 'node1' from the ConfigMap 'kubeadm-config' in the 'kube-system' Namespace"
             );
-            println!(
-                "[reset] Removing info for node 'node1' from the ConfigMap 'cluster-info' in the 'kube-public' Namespace"
-            );
+            println!("[reset] Removing info for node 'node1' from the ConfigMap 'cluster-info' in the 'kube-public' Namespace");
             println!(
                 "[reset] Deleting contents of stateful directories: [/var/lib/etcd /var/lib/kubelet /var/lib/dockershim /var/run/kubernetes /var/lib/cni]"
             );
-            println!(
-                "[reset] Deleting contents of config directories: [/etc/kubernetes/manifests /etc/kubernetes/pki]"
-            );
+            println!("[reset] Deleting contents of config directories: [/etc/kubernetes/manifests /etc/kubernetes/pki]");
             println!(
                 "[reset] Deleting files: [/etc/kubernetes/admin.conf /etc/kubernetes/kubelet.conf /etc/kubernetes/bootstrap-kubelet.conf /etc/kubernetes/controller-manager.conf /etc/kubernetes/scheduler.conf]"
             );
@@ -452,9 +387,7 @@ async fn main() {
             println!("[reset] Removing kubeadm systemd service definition");
             println!("[reset] Manually resetting networking configuration");
             println!("[reset] Cleaning up the kubelet environment");
-            println!(
-                "[reset] Now you can join this node to another cluster as a worker or control-plane node."
-            );
+            println!("[reset] Now you can join this node to another cluster as a worker or control-plane node.");
         }
         Commands::Config { config_command } => match config_command {
             ConfigCommands::Print { config_type } => {
@@ -484,9 +417,7 @@ async fn main() {
                 println!("[init] Using Kubernetes version: v1.28.0");
                 println!("[preflight] Running pre-flight checks");
                 println!("[preflight] Pulling images required for setting up a Kubernetes cluster");
-                println!(
-                    "[preflight] This might take a minute or two, depending on the speed of your internet connection"
-                );
+                println!("[preflight] This might take a minute or two, depending on the speed of your internet connection");
                 println!("[certs] Using certificateDir folder \"/etc/kubernetes/pki\"");
                 println!("[certs] Generating \"ca\" certificate and key");
                 println!("[certs] Generating \"apiserver\" certificate and key");
@@ -503,9 +434,7 @@ async fn main() {
                 println!("[certs] etcd/peer serving cert is signed for DNS names [localhost]");
                 println!("[certs] Generating \"etcd/healthcheck-client\" certificate and key");
                 println!("[certs] Generating \"apiserver-etcd-client\" certificate and key");
-                println!(
-                    "[certs] Valid certificates and keys now exist in \"/etc/kubernetes/pki\""
-                );
+                println!("[certs] Valid certificates and keys now exist in \"/etc/kubernetes/pki\"");
                 println!("[kubeconfig] Using kubeconfig folder \"/etc/kubernetes\"");
                 println!("[kubeconfig] Writing \"admin.conf\" kubeconfig file");
                 println!("[kubeconfig] Writing \"kubelet.conf\" kubeconfig file");
@@ -514,35 +443,25 @@ async fn main() {
                 println!(
                     "[kubelet-start] Writing kubelet environment file with flags to file \"/var/lib/kubelet/kubeadm-flags.env\""
                 );
-                println!(
-                    "[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\""
-                );
+                println!("[kubelet-start] Writing kubelet configuration to file \"/var/lib/kubelet/config.yaml\"");
                 println!("[kubelet-start] Starting the kubelet");
                 println!("[control-plane] Using manifest folder \"/etc/kubernetes/manifests\"");
                 println!("[control-plane] Creating static Pod manifest for \"kube-apiserver\"");
-                println!(
-                    "[control-plane] Creating static Pod manifest for \"kube-controller-manager\""
-                );
+                println!("[control-plane] Creating static Pod manifest for \"kube-controller-manager\"");
                 println!("[control-plane] Creating static Pod manifest for \"kube-scheduler\"");
-                println!(
-                    "[etcd] Creating static Pod manifest for local etcd in \"/etc/kubernetes/manifests\""
-                );
+                println!("[etcd] Creating static Pod manifest for local etcd in \"/etc/kubernetes/manifests\"");
                 println!(
                     "[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory \"/etc/kubernetes/manifests\""
                 );
                 println!("[wait-control-plane] This can take up to 4m0s");
-                println!(
-                    "[apiclient] All control plane components are healthy after 10.501917 seconds"
-                );
+                println!("[apiclient] All control plane components are healthy after 10.501917 seconds");
                 println!(
                     "[upload-config] Storing the configuration used in ConfigMap \"kubeadm-config\" in the \"kube-system\" Namespace"
                 );
                 println!(
                     "[kubelet] Creating a ConfigMap \"kubelet-config\" in namespace kube-system with the configuration for the kubelets in the cluster"
                 );
-                println!(
-                    "[upload-certs] Skipping phase. Please see --upload-certs option in kubeadm init."
-                );
+                println!("[upload-certs] Skipping phase. Please see --upload-certs option in kubeadm init.");
                 println!(
                     "[mark-control-plane] Marking the node localhost as control-plane by adding the labels: [node-role.kubernetes.io/control-plane node.kubernetes.io/exclude-from-external-load-balancers]"
                 );
@@ -550,12 +469,8 @@ async fn main() {
                     "[mark-control-plane] Marking the node localhost as control-plane by adding the taints [node-role.kubernetes.io/control-plane:NoSchedule]"
                 );
                 println!("[bootstrap-token] Using token: abcdef.0123456789abcdef");
-                println!(
-                    "[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles"
-                );
-                println!(
-                    "[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes"
-                );
+                println!("[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles");
+                println!("[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes");
                 println!(
                     "[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials"
                 );
@@ -565,9 +480,7 @@ async fn main() {
                 println!(
                     "[bootstrap-token] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster"
                 );
-                println!(
-                    "[bootstrap-token] Creating the \"cluster-info\" ConfigMap in the \"kube-public\" namespace"
-                );
+                println!("[bootstrap-token] Creating the \"cluster-info\" ConfigMap in the \"kube-public\" namespace");
                 println!("[addons] Applied essential addon: CoreDNS");
                 println!("[addons] Applied essential addon: kube-proxy");
             }

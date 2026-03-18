@@ -5,9 +5,11 @@
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::Mutex,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -115,21 +117,14 @@ async fn handle_http_request(request: &str, state: Arc<Mutex<ApiServerState>>) -
             )
         }
         // API 资源
-        _ if path.starts_with("/api/") || path.starts_with("/apis/") => {
-            handle_api_request(method, path, body, state).await
-        }
+        _ if path.starts_with("/api/") || path.starts_with("/apis/") => handle_api_request(method, path, body, state).await,
         _ => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
     };
 
     response.to_string()
 }
 
-async fn handle_api_request(
-    method: &str,
-    path: &str,
-    body: &str,
-    state: Arc<Mutex<ApiServerState>>,
-) -> String {
+async fn handle_api_request(method: &str, path: &str, body: &str, state: Arc<Mutex<ApiServerState>>) -> String {
     // 解析API路径
     let parts: Vec<&str> = path.split("/").filter(|s| !s.is_empty()).collect();
     if parts.len() < 2 {
@@ -138,16 +133,14 @@ async fn handle_api_request(
 
     let api_version = parts[1];
     let resource_type = if parts.len() > 2 { parts[2] } else { "" };
-    let namespace = if parts.len() > 3 && parts[2] == "namespaces" {
-        Some(parts[3])
-    } else {
-        None
-    };
+    let namespace = if parts.len() > 3 && parts[2] == "namespaces" { Some(parts[3]) } else { None };
     let resource_name = if parts.len() > 4 {
         Some(parts[4])
-    } else if parts.len() > 3 && parts[2] != "namespaces" {
+    }
+    else if parts.len() > 3 && parts[2] != "namespaces" {
         Some(parts[3])
-    } else {
+    }
+    else {
         None
     };
 
@@ -172,7 +165,8 @@ async fn handle_api_request(
                     value_str.len(),
                     value_str
                 )
-            } else {
+            }
+            else {
                 "HTTP/1.1 404 Not Found\r\n\r\n".to_string()
             }
         }
@@ -222,7 +216,8 @@ async fn handle_api_request(
             // 从HashMap删除资源
             if state.resources.remove(&etcd_key).is_some() {
                 "HTTP/1.1 204 No Content\r\n\r\n".to_string()
-            } else {
+            }
+            else {
                 "HTTP/1.1 404 Not Found\r\n\r\n".to_string()
             }
         }
@@ -262,9 +257,7 @@ async fn main() {
     };
 
     // 初始化API服务器状态
-    let state = ApiServerState {
-        resources: std::collections::HashMap::new(),
-    };
+    let state = ApiServerState { resources: std::collections::HashMap::new() };
 
     let state = Arc::new(Mutex::new(state));
     println!("Kubernetes API Server listening on {}", cli.host);

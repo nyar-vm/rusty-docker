@@ -2,10 +2,12 @@ use base64;
 use clap::{Parser, Subcommand};
 use dirs;
 use serde_json;
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{self, Read, Write},
+    path::Path,
+};
 
 /// Docker Credential Helpers 命令行工具
 ///
@@ -38,18 +40,12 @@ impl CredentialStore {
     /// 创建新的凭据存储
     fn new() -> Self {
         let home_dir = dirs::home_dir().expect("无法获取主目录");
-        let path = home_dir
-            .join(".docker")
-            .join("config.json")
-            .to_string_lossy()
-            .to_string();
+        let path = home_dir.join(".docker").join("config.json").to_string_lossy().to_string();
         Self { path }
     }
 
     /// 读取配置文件
-    fn read_config(
-        &self,
-    ) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error>> {
+    fn read_config(&self) -> Result<HashMap<String, serde_json::Value>, Box<dyn std::error::Error>> {
         if !Path::new(&self.path).exists() {
             return Ok(HashMap::new());
         }
@@ -71,10 +67,7 @@ impl CredentialStore {
     }
 
     /// 写入配置文件
-    fn write_config(
-        &self,
-        auths: &HashMap<String, serde_json::Value>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn write_config(&self, auths: &HashMap<String, serde_json::Value>) -> Result<(), Box<dyn std::error::Error>> {
         let config = serde_json::json!({
             "auths": auths
         });
@@ -90,12 +83,7 @@ impl CredentialStore {
     }
 
     /// 存储凭据
-    fn store(
-        &self,
-        registry: &str,
-        username: &str,
-        password: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn store(&self, registry: &str, username: &str, password: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut auths = self.read_config()?;
 
         let auth = base64::encode(format!("{}:{}", username, password));
@@ -155,25 +143,13 @@ async fn main() {
         Commands::Store => {
             // 从标准输入读取 JSON 格式的凭据
             let mut input = String::new();
-            io::stdin()
-                .read_to_string(&mut input)
-                .expect("无法读取输入");
+            io::stdin().read_to_string(&mut input).expect("无法读取输入");
 
-            let credential: serde_json::Value =
-                serde_json::from_str(&input).expect("无效的 JSON 格式");
+            let credential: serde_json::Value = serde_json::from_str(&input).expect("无效的 JSON 格式");
 
-            let registry = credential
-                .get("ServerURL")
-                .and_then(|v| v.as_str())
-                .expect("缺少 ServerURL");
-            let username = credential
-                .get("Username")
-                .and_then(|v| v.as_str())
-                .expect("缺少 Username");
-            let password = credential
-                .get("Secret")
-                .and_then(|v| v.as_str())
-                .expect("缺少 Secret");
+            let registry = credential.get("ServerURL").and_then(|v| v.as_str()).expect("缺少 ServerURL");
+            let username = credential.get("Username").and_then(|v| v.as_str()).expect("缺少 Username");
+            let password = credential.get("Secret").and_then(|v| v.as_str()).expect("缺少 Secret");
 
             if let Err(e) = store.store(registry, username, password) {
                 eprintln!("存储凭据失败: {:?}", e);
@@ -183,9 +159,7 @@ async fn main() {
         Commands::Get => {
             // 从标准输入读取注册表地址
             let mut input = String::new();
-            io::stdin()
-                .read_to_string(&mut input)
-                .expect("无法读取输入");
+            io::stdin().read_to_string(&mut input).expect("无法读取输入");
             let registry = input.trim();
 
             match store.get(registry) {
@@ -209,9 +183,7 @@ async fn main() {
         Commands::Erase => {
             // 从标准输入读取注册表地址
             let mut input = String::new();
-            io::stdin()
-                .read_to_string(&mut input)
-                .expect("无法读取输入");
+            io::stdin().read_to_string(&mut input).expect("无法读取输入");
             let registry = input.trim();
 
             if let Err(e) = store.erase(registry) {

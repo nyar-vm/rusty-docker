@@ -1,15 +1,9 @@
-use std::process::Command;
-use std::str;
+use std::{process::Command, str};
 
 #[test]
 fn test_helm_version() {
-    let output = Command::new("cargo")
-        .arg("run")
-        .arg("--bin")
-        .arg("helm")
-        .arg("--version")
-        .output()
-        .expect("Failed to execute command");
+    let output =
+        Command::new("cargo").arg("run").arg("--bin").arg("helm").arg("--version").output().expect("Failed to execute command");
 
     assert!(output.status.success());
     let stdout = str::from_utf8(&output.stdout).unwrap();

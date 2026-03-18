@@ -18,13 +18,8 @@ impl StorageManager {
     }
 
     pub async fn ensure_directories(&self) -> StorageResult<()> {
-        let directories = [
-            &self.base_path,
-            &self.containers_path()?,
-            &self.images_path()?,
-            &self.volumes_path()?,
-            &self.tmp_path()?,
-        ];
+        let directories =
+            [&self.base_path, &self.containers_path()?, &self.images_path()?, &self.volumes_path()?, &self.tmp_path()?];
 
         for dir in directories {
             if !dir.exists() {
@@ -66,8 +61,7 @@ impl StorageManager {
     pub fn get_base_path() -> StorageResult<PathBuf> {
         #[cfg(windows)]
         {
-            let app_data =
-                std::env::var("APPDATA").map_err(|_| DockerError::config_missing("APPDATA"))?;
+            let app_data = std::env::var("APPDATA").map_err(|_| DockerError::config_missing("APPDATA"))?;
             Ok(PathBuf::from(app_data).join("DockerCrab"))
         }
 
@@ -80,10 +74,7 @@ impl StorageManager {
         #[cfg(target_os = "macos")]
         {
             let home = std::env::var("HOME").map_err(|_| DockerError::config_missing("HOME"))?;
-            Ok(PathBuf::from(home)
-                .join("Library")
-                .join("Application Support")
-                .join("DockerCrab"))
+            Ok(PathBuf::from(home).join("Library").join("Application Support").join("DockerCrab"))
         }
     }
 

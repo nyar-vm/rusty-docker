@@ -3,8 +3,7 @@
 //! Kubernetes 配置管理
 
 use docker_types::{DockerError, Result as DockerResult};
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 /// Kubernetes 配置
 pub struct KubernetesConfig {
@@ -23,8 +22,7 @@ pub struct KubernetesConfig {
 impl KubernetesConfig {
     /// 从文件加载配置
     pub fn from_file(path: &Path) -> DockerResult<Self> {
-        let content = fs::read_to_string(path)
-            .map_err(|e| DockerError::io_error("from_file", e.to_string()))?;
+        let content = fs::read_to_string(path).map_err(|e| DockerError::io_error("from_file", e.to_string()))?;
 
         // 这里可以解析 YAML 或 JSON 配置
         // 暂时返回默认配置

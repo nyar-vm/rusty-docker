@@ -25,10 +25,7 @@ impl CgroupManager {
 
             // 检查控制组目录是否存在
             if !Path::new(&cgroup_root).exists() {
-                return Err(DockerError::io_error(
-                    "cgroup_not_found",
-                    "Cgroup directory not found",
-                ));
+                return Err(DockerError::io_error("cgroup_not_found", "Cgroup directory not found"));
             }
 
             Ok(Self { cgroup_root })
@@ -48,8 +45,7 @@ impl CgroupManager {
             let cgroup_path = format!("{}/rusty-docker/{}", self.cgroup_root, container_id);
 
             // 创建控制组目录
-            fs::create_dir_all(&cgroup_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::create_dir_all(&cgroup_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             // 设置 CPU 限制
             self.set_cpu_limit(&cgroup_path, limits.cpu_limit)?;
@@ -81,13 +77,11 @@ impl CgroupManager {
             let cpu_period = format!("{}/cpu/cpu.cfs_period_us", cgroup_path);
 
             // 设置周期为 100ms
-            fs::write(cpu_period, "100000")
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::write(cpu_period, "100000").map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             // 设置配额
             let quota = (cpu_limit * 100000.0) as i32;
-            fs::write(cpu_path, quota.to_string())
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::write(cpu_path, quota.to_string()).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             Ok(())
         }
@@ -107,8 +101,7 @@ impl CgroupManager {
 
             // 转换为字节
             let limit_bytes = memory_limit * 1024 * 1024;
-            fs::write(memory_path, limit_bytes.to_string())
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::write(memory_path, limit_bytes.to_string()).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             Ok(())
         }
@@ -168,8 +161,7 @@ impl CgroupManager {
             let cgroup_path = format!("{}/rusty-docker/{}", self.cgroup_root, container_id);
             let tasks_path = format!("{}/cgroup.procs", cgroup_path);
 
-            fs::write(tasks_path, pid.to_string())
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::write(tasks_path, pid.to_string()).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             Ok(())
         }
@@ -187,8 +179,7 @@ impl CgroupManager {
         {
             let cgroup_path = format!("{}/rusty-docker/{}", self.cgroup_root, container_id);
 
-            fs::remove_dir_all(&cgroup_path)
-                .map_err(|e| DockerError::io_error("operation", e.to_string()))?;
+            fs::remove_dir_all(&cgroup_path).map_err(|e| DockerError::io_error("operation", e.to_string()))?;
 
             Ok(())
         }

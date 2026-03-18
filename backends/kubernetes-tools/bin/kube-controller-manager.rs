@@ -2,12 +2,14 @@
 //!
 //! 运行各种控制器，确保集群状态与期望状态一致
 
+use chrono;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{Duration, sleep};
-use chrono;
+use tokio::{
+    sync::Mutex,
+    time::{Duration, sleep},
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -117,11 +119,11 @@ impl ControllerManagerState {
 
     async fn sync_controller_by_index(&mut self, index: usize) {
         // 先获取控制器类型
-        let controller_type = { 
+        let controller_type = {
             let controller = &self.controllers[index];
             controller.controller_type.clone()
         };
-        
+
         println!("Syncing {:?}", controller_type);
 
         match controller_type {
@@ -139,10 +141,7 @@ impl ControllerManagerState {
             }
             _ => {
                 // 其他控制器的实现
-                println!(
-                    "Controller {:?} not fully implemented yet",
-                    controller_type
-                );
+                println!("Controller {:?} not fully implemented yet", controller_type);
             }
         }
 
@@ -169,10 +168,7 @@ impl ControllerManagerState {
             }
             _ => {
                 // 其他控制器的实现
-                println!(
-                    "Controller {:?} not fully implemented yet",
-                    controller.controller_type
-                );
+                println!("Controller {:?} not fully implemented yet", controller.controller_type);
             }
         }
 
@@ -213,7 +209,8 @@ impl ControllerManagerState {
             println!("Checking leader election...");
             // 实际实现中应该与其他控制器管理器竞争领导者地位
             true
-        } else {
+        }
+        else {
             true
         }
     }
@@ -233,7 +230,8 @@ async fn main() {
     if state.check_leader_election().await {
         println!("Became leader, starting controllers");
         state.run().await;
-    } else {
+    }
+    else {
         println!("Not elected as leader, exiting");
     }
 }

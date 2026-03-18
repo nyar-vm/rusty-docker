@@ -342,9 +342,7 @@ impl DockerErrorKind {
             | DockerErrorKind::InvalidToken { .. }
             | DockerErrorKind::TokenExpired => ErrorCategory::Auth,
 
-            DockerErrorKind::PermissionDenied { .. } | DockerErrorKind::Forbidden { .. } => {
-                ErrorCategory::Permission
-            }
+            DockerErrorKind::PermissionDenied { .. } | DockerErrorKind::Forbidden { .. } => ErrorCategory::Permission,
 
             DockerErrorKind::ResourceNotFound { .. } => ErrorCategory::NotFound,
 
@@ -362,9 +360,7 @@ impl DockerErrorKind {
             | DockerErrorKind::InsufficientCapacity { .. }
             | DockerErrorKind::StorageFileNotFound { .. } => ErrorCategory::Storage,
 
-            DockerErrorKind::ConfigMissing { .. } | DockerErrorKind::ConfigInvalid { .. } => {
-                ErrorCategory::Config
-            }
+            DockerErrorKind::ConfigMissing { .. } | DockerErrorKind::ConfigInvalid { .. } => ErrorCategory::Config,
 
             DockerErrorKind::InternalError { .. }
             | DockerErrorKind::NotImplemented { .. }
@@ -410,19 +406,13 @@ impl DockerErrorKind {
             DockerErrorKind::RateLimited { .. } => "docker.error.rate_limited",
 
             DockerErrorKind::ConnectionFailed { .. } => "docker.error.network.connection_failed",
-            DockerErrorKind::DnsResolutionFailed { .. } => {
-                "docker.error.network.dns_resolution_failed"
-            }
-            DockerErrorKind::ServiceUnavailable { .. } => {
-                "docker.error.network.service_unavailable"
-            }
+            DockerErrorKind::DnsResolutionFailed { .. } => "docker.error.network.dns_resolution_failed",
+            DockerErrorKind::ServiceUnavailable { .. } => "docker.error.network.service_unavailable",
 
             DockerErrorKind::StorageReadFailed { .. } => "docker.error.storage.read_failed",
             DockerErrorKind::StorageWriteFailed { .. } => "docker.error.storage.write_failed",
             DockerErrorKind::StorageDeleteFailed { .. } => "docker.error.storage.delete_failed",
-            DockerErrorKind::InsufficientCapacity { .. } => {
-                "docker.error.storage.insufficient_capacity"
-            }
+            DockerErrorKind::InsufficientCapacity { .. } => "docker.error.storage.insufficient_capacity",
             DockerErrorKind::StorageFileNotFound { .. } => "docker.error.storage.file_not_found",
 
             DockerErrorKind::ConfigMissing { .. } => "docker.error.config.missing",
@@ -476,10 +466,7 @@ impl DockerErrorKind {
             DockerErrorKind::PermissionDenied { action } => json!({ "action": action }),
             DockerErrorKind::Forbidden { resource } => json!({ "resource": resource }),
 
-            DockerErrorKind::ResourceNotFound {
-                resource_type,
-                identifier,
-            } => {
+            DockerErrorKind::ResourceNotFound { resource_type, identifier } => {
                 json!({ "resource_type": resource_type, "identifier": identifier })
             }
 
@@ -496,10 +483,7 @@ impl DockerErrorKind {
             DockerErrorKind::StorageReadFailed { path } => json!({ "path": path }),
             DockerErrorKind::StorageWriteFailed { path } => json!({ "path": path }),
             DockerErrorKind::StorageDeleteFailed { path } => json!({ "path": path }),
-            DockerErrorKind::InsufficientCapacity {
-                required,
-                available,
-            } => {
+            DockerErrorKind::InsufficientCapacity { required, available } => {
                 json!({ "required": required, "available": available })
             }
             DockerErrorKind::StorageFileNotFound { path } => json!({ "path": path }),
@@ -543,9 +527,7 @@ impl fmt::Display for DockerErrorKind {
 impl DockerError {
     /// 创建新的错误
     pub fn new(kind: DockerErrorKind) -> Self {
-        Self {
-            kind: Box::new(kind),
-        }
+        Self { kind: Box::new(kind) }
     }
 
     /// 获取国际化键
@@ -572,54 +554,32 @@ impl DockerError {
 
     /// 创建无效格式错误
     pub fn invalid_format(field: impl Into<String>, expected: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::InvalidFormat {
-            field: field.into(),
-            expected: expected.into(),
-        })
+        Self::new(DockerErrorKind::InvalidFormat { field: field.into(), expected: expected.into() })
     }
 
     /// 创建超出范围错误
-    pub fn out_of_range(
-        field: impl Into<String>,
-        min: Option<String>,
-        max: Option<String>,
-    ) -> Self {
-        Self::new(DockerErrorKind::OutOfRange {
-            field: field.into(),
-            min,
-            max,
-        })
+    pub fn out_of_range(field: impl Into<String>, min: Option<String>, max: Option<String>) -> Self {
+        Self::new(DockerErrorKind::OutOfRange { field: field.into(), min, max })
     }
 
     /// 创建必填字段缺失错误
     pub fn required(field: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::Required {
-            field: field.into(),
-        })
+        Self::new(DockerErrorKind::Required { field: field.into() })
     }
 
     /// 创建已存在错误
     pub fn already_exists(field: impl Into<String>, value: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::AlreadyExists {
-            field: field.into(),
-            value: value.into(),
-        })
+        Self::new(DockerErrorKind::AlreadyExists { field: field.into(), value: value.into() })
     }
 
     /// 创建不允许错误
     pub fn not_allowed(field: impl Into<String>, allowed: Vec<String>) -> Self {
-        Self::new(DockerErrorKind::NotAllowed {
-            field: field.into(),
-            allowed,
-        })
+        Self::new(DockerErrorKind::NotAllowed { field: field.into(), allowed })
     }
 
     /// 创建无效参数错误
     pub fn invalid_params(param: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::InvalidParams {
-            param: param.into(),
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::InvalidParams { param: param.into(), reason: reason.into() })
     }
 
     // ========== 认证错误便捷方法 ==========
@@ -636,23 +596,17 @@ impl DockerError {
 
     /// 创建用户未找到错误
     pub fn user_not_found(identifier: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::UserNotFound {
-            identifier: identifier.into(),
-        })
+        Self::new(DockerErrorKind::UserNotFound { identifier: identifier.into() })
     }
 
     /// 创建用户已存在错误
     pub fn user_already_exists(username: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::UserAlreadyExists {
-            username: username.into(),
-        })
+        Self::new(DockerErrorKind::UserAlreadyExists { username: username.into() })
     }
 
     /// 创建无效令牌错误
     pub fn invalid_token(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::InvalidToken {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::InvalidToken { reason: reason.into() })
     }
 
     /// 创建令牌过期错误
@@ -664,42 +618,31 @@ impl DockerError {
 
     /// 创建权限拒绝错误
     pub fn permission_denied(action: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::PermissionDenied {
-            action: action.into(),
-        })
+        Self::new(DockerErrorKind::PermissionDenied { action: action.into() })
     }
 
     /// 创建禁止访问错误
     pub fn forbidden(resource: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::Forbidden {
-            resource: resource.into(),
-        })
+        Self::new(DockerErrorKind::Forbidden { resource: resource.into() })
     }
 
     // ========== 资源未找到便捷方法 ==========
 
     /// 创建资源未找到错误
     pub fn not_found(resource_type: impl Into<String>, identifier: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ResourceNotFound {
-            resource_type: resource_type.into(),
-            identifier: identifier.into(),
-        })
+        Self::new(DockerErrorKind::ResourceNotFound { resource_type: resource_type.into(), identifier: identifier.into() })
     }
 
     // ========== 网络错误便捷方法 ==========
 
     /// 创建连接失败错误
     pub fn connection_failed(target: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ConnectionFailed {
-            target: target.into(),
-        })
+        Self::new(DockerErrorKind::ConnectionFailed { target: target.into() })
     }
 
     /// 创建服务不可用错误
     pub fn service_unavailable(service: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ServiceUnavailable {
-            service: service.into(),
-        })
+        Self::new(DockerErrorKind::ServiceUnavailable { service: service.into() })
     }
 
     // ========== 存储错误便捷方法 ==========
@@ -728,115 +671,81 @@ impl DockerError {
 
     /// 创建配置无效错误
     pub fn config_invalid(key: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ConfigInvalid {
-            key: key.into(),
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::ConfigInvalid { key: key.into(), reason: reason.into() })
     }
 
     // ========== 内部错误便捷方法 ==========
 
     /// 创建内部错误
     pub fn internal(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::InternalError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::InternalError { reason: reason.into() })
     }
 
     /// 创建未实现错误
     pub fn not_implemented(feature: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::NotImplemented {
-            feature: feature.into(),
-        })
+        Self::new(DockerErrorKind::NotImplemented { feature: feature.into() })
     }
 
     /// 创建 IO 错误
     pub fn io_error(operation: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::IoError {
-            operation: operation.into(),
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::IoError { operation: operation.into(), reason: reason.into() })
     }
 
     /// 创建 JSON 错误
     pub fn json_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::JsonError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::JsonError { reason: reason.into() })
     }
 
     /// 创建解析错误
     pub fn parse_error(type_name: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ParseError {
-            type_name: type_name.into(),
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::ParseError { type_name: type_name.into(), reason: reason.into() })
     }
 
     /// 创建请求错误
     pub fn request_error(url: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::RequestError {
-            url: url.into(),
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::RequestError { url: url.into(), reason: reason.into() })
     }
 
     // ========== Docker 特定错误便捷方法 ==========
 
     /// 创建容器错误
     pub fn container_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ContainerError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::ContainerError { reason: reason.into() })
     }
 
     /// 创建镜像错误
     pub fn image_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::ImageError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::ImageError { reason: reason.into() })
     }
 
     /// 创建网络错误
     pub fn network_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::NetworkError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::NetworkError { reason: reason.into() })
     }
 
     /// 创建运行时错误
     pub fn runtime_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::RuntimeError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::RuntimeError { reason: reason.into() })
     }
 
     /// 创建注册表错误
     pub fn registry_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::RegistryError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::RegistryError { reason: reason.into() })
     }
 
     /// 创建 Etcd 错误
     pub fn etcd_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::EtcdError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::EtcdError { reason: reason.into() })
     }
 
     /// 创建监控错误
     pub fn monitor_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::MonitorError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::MonitorError { reason: reason.into() })
     }
 
     /// 创建 Kubernetes 错误
     pub fn kubernetes_error(reason: impl Into<String>) -> Self {
-        Self::new(DockerErrorKind::KubernetesError {
-            reason: reason.into(),
-        })
+        Self::new(DockerErrorKind::KubernetesError { reason: reason.into() })
     }
 }
 

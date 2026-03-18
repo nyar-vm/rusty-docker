@@ -2,12 +2,14 @@
 //!
 //! 负责将Pod调度到合适的节点上
 
+use chrono;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{Duration, sleep};
-use chrono;
+use tokio::{
+    sync::Mutex,
+    time::{Duration, sleep},
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -133,16 +135,8 @@ impl SchedulerState {
         self.nodes = vec![
             NodeInfo {
                 name: "node1".to_string(),
-                capacity: Resource {
-                    cpu: "4".to_string(),
-                    memory: "8Gi".to_string(),
-                    pods: "110".to_string(),
-                },
-                allocatable: Resource {
-                    cpu: "3.9".to_string(),
-                    memory: "7.9Gi".to_string(),
-                    pods: "100".to_string(),
-                },
+                capacity: Resource { cpu: "4".to_string(), memory: "8Gi".to_string(), pods: "110".to_string() },
+                allocatable: Resource { cpu: "3.9".to_string(), memory: "7.9Gi".to_string(), pods: "100".to_string() },
                 labels: std::collections::HashMap::from([
                     ("kubernetes.io/hostname".to_string(), "node1".to_string()),
                     ("kubernetes.io/os".to_string(), "linux".to_string()),
@@ -159,16 +153,8 @@ impl SchedulerState {
             },
             NodeInfo {
                 name: "node2".to_string(),
-                capacity: Resource {
-                    cpu: "2".to_string(),
-                    memory: "4Gi".to_string(),
-                    pods: "110".to_string(),
-                },
-                allocatable: Resource {
-                    cpu: "1.9".to_string(),
-                    memory: "3.9Gi".to_string(),
-                    pods: "100".to_string(),
-                },
+                capacity: Resource { cpu: "2".to_string(), memory: "4Gi".to_string(), pods: "110".to_string() },
+                allocatable: Resource { cpu: "1.9".to_string(), memory: "3.9Gi".to_string(), pods: "100".to_string() },
                 labels: std::collections::HashMap::from([
                     ("kubernetes.io/hostname".to_string(), "node2".to_string()),
                     ("kubernetes.io/os".to_string(), "linux".to_string()),
@@ -196,16 +182,8 @@ impl SchedulerState {
             containers: vec![Container {
                 name: "nginx".to_string(),
                 resources: ResourceRequirements {
-                    requests: Some(Resource {
-                        cpu: "100m".to_string(),
-                        memory: "256Mi".to_string(),
-                        pods: "1".to_string(),
-                    }),
-                    limits: Some(Resource {
-                        cpu: "200m".to_string(),
-                        memory: "512Mi".to_string(),
-                        pods: "1".to_string(),
-                    }),
+                    requests: Some(Resource { cpu: "100m".to_string(), memory: "256Mi".to_string(), pods: "1".to_string() }),
+                    limits: Some(Resource { cpu: "200m".to_string(), memory: "512Mi".to_string(), pods: "1".to_string() }),
                 },
             }],
             node_name: None,
@@ -220,27 +198,25 @@ impl SchedulerState {
         // 调度过程
         let pod_count = self.pending_pods.len();
         let mut scheduled_pods = vec![];
-        
+
         // 先收集所有需要调度的pod和对应的节点
         for i in 0..pod_count {
             let pod = &self.pending_pods[i];
             if let Some(node) = self.select_node(pod) {
                 scheduled_pods.push((i, node));
-            } else {
-                println!(
-                    "No suitable node found for pod {}/{}",
-                    pod.namespace, pod.name
-                );
+            }
+            else {
+                println!("No suitable node found for pod {}/{}", pod.namespace, pod.name);
             }
         }
-        
+
         // 然后更新pod和绑定到节点
         for (i, node) in scheduled_pods {
             let pod = &mut self.pending_pods[i];
-            println!("Scheduled pod {}/{}" , pod.namespace, pod.name);
+            println!("Scheduled pod {}/{}", pod.namespace, pod.name);
             println!("  -> Node: {}", node);
             pod.node_name = Some(node.clone());
-            
+
             // 这里应该调用API服务器更新Pod的nodeName字段
             // 由于bind_pod_to_node不再使用self.api_client，我们可以直接调用它
             // 但是需要避免borrow checker错误，所以我们需要先获取pod的信息
@@ -257,10 +233,7 @@ impl SchedulerState {
         let mut suitable_nodes = vec![];
         for node in &self.nodes {
             // 检查节点是否就绪
-            let is_ready = node
-                .conditions
-                .iter()
-                .any(|c| c.type_ == "Ready" && c.status == "True");
+            let is_ready = node.conditions.iter().any(|c| c.type_ == "Ready" && c.status == "True");
             if !is_ready {
                 continue;
             }
@@ -274,7 +247,8 @@ impl SchedulerState {
                             match_selector = false;
                             break;
                         }
-                    } else {
+                    }
+                    else {
                         match_selector = false;
                         break;
                     }
@@ -325,7 +299,8 @@ impl SchedulerState {
             println!("Checking leader election...");
             // 实际实现中应该与其他调度器竞争领导者地位
             true
-        } else {
+        }
+        else {
             true
         }
     }
@@ -341,17 +316,13 @@ async fn main() {
     println!("Leader election: {}", cli.leader_elect);
     println!("Sync period: {}s", cli.sync_period);
 
-    let mut state = SchedulerState::new(
-        &cli.master,
-        &cli.scheduler_name,
-        cli.leader_elect,
-        cli.sync_period,
-    );
+    let mut state = SchedulerState::new(&cli.master, &cli.scheduler_name, cli.leader_elect, cli.sync_period);
 
     if state.check_leader_election().await {
         println!("Became leader, starting scheduler");
         state.run().await;
-    } else {
+    }
+    else {
         println!("Not elected as leader, exiting");
     }
 }

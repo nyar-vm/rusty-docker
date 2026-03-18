@@ -1,8 +1,7 @@
 use super::{NetworkConfig, NetworkInfo, NetworkManager, Result};
 use docker_types::DockerError;
-use std::collections::HashMap;
-use std::sync::RwLock;
 use rand;
+use std::{collections::HashMap, sync::RwLock};
 
 pub struct LinuxNetworkManager {
     networks: RwLock<HashMap<String, NetworkInfo>>,
@@ -10,9 +9,7 @@ pub struct LinuxNetworkManager {
 
 impl LinuxNetworkManager {
     pub fn new() -> Self {
-        Self {
-            networks: RwLock::new(HashMap::new()),
-        }
+        Self { networks: RwLock::new(HashMap::new()) }
     }
 }
 
@@ -21,28 +18,29 @@ impl NetworkManager for LinuxNetworkManager {
         &mut self,
         config: &NetworkConfig,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
+        let config = config.clone();
         Box::pin(async move {
             // Generate a random network ID
             let network_id = format!("{:x}", rand::random::<u64>());
-            
+
             // Create network info
             let network_info = NetworkInfo {
                 id: network_id.clone(),
-                name: config.name.clone(),
-                driver: config.driver.clone(),
+                name: config.name,
+                driver: config.driver,
                 scope: "local".to_string(),
                 enable_ipv6: config.enable_ipv6,
                 internal: false,
                 attachable: true,
                 ingress: false,
                 containers: HashMap::new(),
-                options: config.options.clone().unwrap_or_default(),
+                options: config.options.unwrap_or_default(),
                 labels: HashMap::new(),
             };
-            
+
             // Store network info
             self.networks.write().unwrap().insert(network_id, network_info.clone());
-            
+
             Ok(network_info)
         })
     }
@@ -53,24 +51,32 @@ impl NetworkManager for LinuxNetworkManager {
         container_id: &str,
         aliases: Option<Vec<String>>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+        let network_id = network_id.to_string();
+        let container_id = container_id.to_string();
         Box::pin(async move {
             let mut networks = self.networks.write().unwrap();
-            
-            if let Some(network) = networks.get_mut(network_id) {
+
+            if let Some(network) = networks.get_mut(&network_id) {
                 // Add container to network
                 let container_info = super::ContainerInfo {
-                    name: container_id.to_string(),
+                    name: container_id.clone(),
                     endpoint_id: format!("{:x}", rand::random::<u64>()),
-                    mac_address: format!("02:42:{:02x}:{:02x}:{:02x}:{:02x}", 
-                        rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>(), rand::random::<u8>()),
+                    mac_address: format!(
+                        "02:42:{:02x}:{:02x}:{:02x}:{:02x}",
+                        rand::random::<u8>(),
+                        rand::random::<u8>(),
+                        rand::random::<u8>(),
+                        rand::random::<u8>()
+                    ),
                     ipv4_address: format!("172.17.0.{}", rand::random::<u8>() % 254 + 2),
                     ipv6_address: "".to_string(),
                 };
-                
-                network.containers.insert(container_id.to_string(), container_info);
+
+                network.containers.insert(container_id, container_info);
                 Ok(())
-            } else {
-                Err(DockerError::not_found("network", network_id.to_string()))
+            }
+            else {
+                Err(DockerError::not_found("network", network_id))
             }
         })
     }
@@ -80,15 +86,18 @@ impl NetworkManager for LinuxNetworkManager {
         network_id: &str,
         container_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+        let network_id = network_id.to_string();
+        let container_id = container_id.to_string();
         Box::pin(async move {
             let mut networks = self.networks.write().unwrap();
-            
-            if let Some(network) = networks.get_mut(network_id) {
+
+            if let Some(network) = networks.get_mut(&network_id) {
                 // Remove container from network
-                network.containers.remove(container_id);
+                network.containers.remove(&container_id);
                 Ok(())
-            } else {
-                Err(DockerError::not_found("network", network_id.to_string()))
+            }
+            else {
+                Err(DockerError::not_found("network", network_id))
             }
         })
     }
@@ -97,21 +106,15 @@ impl NetworkManager for LinuxNetworkManager {
         &mut self,
         network_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+        let network_id = network_id.to_string();
         Box::pin(async move {
             let mut networks = self.networks.write().unwrap();
-            
-            if networks.remove(network_id).is_some() {
-                Ok(())
-            } else {
-                Err(DockerError::not_found("network", network_id.to_string()))
-            }
+
+            if networks.remove(&network_id).is_some() { Ok(()) } else { Err(DockerError::not_found("network", network_id)) }
         })
     }
 
-    fn list_networks(
-        &mut self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>>
-    {
+    fn list_networks(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>> {
         Box::pin(async move {
             let networks = self.networks.read().unwrap();
             Ok(networks.values().cloned().collect())
@@ -122,13 +125,15 @@ impl NetworkManager for LinuxNetworkManager {
         &mut self,
         network_id: &str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
+        let network_id = network_id.to_string();
         Box::pin(async move {
             let networks = self.networks.read().unwrap();
-            
-            if let Some(network) = networks.get(network_id) {
+
+            if let Some(network) = networks.get(&network_id) {
                 Ok(network.clone())
-            } else {
-                Err(DockerError::not_found("network", network_id.to_string()))
+            }
+            else {
+                Err(DockerError::not_found("network", network_id))
             }
         })
     }

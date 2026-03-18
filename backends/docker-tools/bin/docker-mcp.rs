@@ -1,11 +1,13 @@
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, to_string_pretty};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::Path;
-use std::str::FromStr;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+    str::FromStr,
+};
 
 /// Docker MCP (Manifest Configuration Protocol) 命令行工具
 ///
@@ -126,14 +128,16 @@ impl FromStr for ImageReference {
         if parts[0].contains(':') || parts[0].contains('.') {
             registry = Some(parts[0].to_string());
             repo_part = parts[1..].join("/");
-        } else {
+        }
+        else {
             repo_part = s.to_string();
         }
 
         // 检查是否包含标签
         let (repository, tag_part) = if let Some((repo, t)) = repo_part.split_once(':') {
             (repo.to_string(), Some(t.to_string()))
-        } else {
+        }
+        else {
             (repo_part, None)
         };
 
@@ -141,11 +145,7 @@ impl FromStr for ImageReference {
             tag = tag_part;
         }
 
-        Ok(ImageReference {
-            registry,
-            repository,
-            tag,
-        })
+        Ok(ImageReference { registry, repository, tag })
     }
 }
 
@@ -162,10 +162,7 @@ impl RegistryClient {
             None => "https://registry-1.docker.io".to_string(),
         };
 
-        Self {
-            base_url,
-            headers: HashMap::new(),
-        }
+        Self { base_url, headers: HashMap::new() }
     }
 
     async fn get_manifest(&self, reference: &ImageReference) -> Result<Value, String> {
@@ -188,11 +185,7 @@ impl RegistryClient {
         }))
     }
 
-    async fn push_manifest(
-        &self,
-        reference: &ImageReference,
-        manifest: &ManifestList,
-    ) -> Result<(), String> {
+    async fn push_manifest(&self, reference: &ImageReference, manifest: &ManifestList) -> Result<(), String> {
         // 模拟推送清单
         Ok(())
     }
@@ -202,22 +195,17 @@ impl RegistryClient {
         Ok(())
     }
 
-    async fn list_manifests(
-        &self,
-        repository: &str,
-    ) -> Result<Vec<(String, String, Vec<String>)>, String> {
+    async fn list_manifests(&self, repository: &str) -> Result<Vec<(String, String, Vec<String>)>, String> {
         // 模拟列出清单
         Ok(vec![
             (
                 "myimage:latest".to_string(),
-                "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    .to_string(),
+                "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string(),
                 vec!["linux/amd64".to_string(), "linux/arm64".to_string()],
             ),
             (
                 "myimage:v1.0".to_string(),
-                "sha256:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
-                    .to_string(),
+                "sha256:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy".to_string(),
                 vec!["linux/amd64".to_string(), "linux/arm64".to_string()],
             ),
         ])
@@ -225,11 +213,7 @@ impl RegistryClient {
 }
 
 /// 创建清单列表
-async fn create_manifest_list(
-    name: &str,
-    images: &[String],
-    platforms: &[String],
-) -> Result<ManifestList, String> {
+async fn create_manifest_list(name: &str, images: &[String], platforms: &[String]) -> Result<ManifestList, String> {
     let mut manifests = Vec::new();
 
     for (i, image) in images.iter().enumerate() {
@@ -242,7 +226,8 @@ async fn create_manifest_list(
         // 解析平台信息
         let platform = if i < platforms.len() {
             parse_platform(&platforms[i])?
-        } else {
+        }
+        else {
             // 默认平台信息
             Platform {
                 architecture: "amd64".to_string(),
@@ -290,18 +275,13 @@ fn parse_platform(platform_str: &str) -> Result<Platform, String> {
     for part in &parts[2..] {
         if part.starts_with("osversion=") {
             os_version = Some(part.trim_start_matches("osversion=").to_string());
-        } else if part.starts_with("variant=") {
+        }
+        else if part.starts_with("variant=") {
             variant = Some(part.trim_start_matches("variant=").to_string());
         }
     }
 
-    Ok(Platform {
-        architecture,
-        os,
-        os_version,
-        variant,
-        features: None,
-    })
+    Ok(Platform { architecture, os, os_version, variant, features: None })
 }
 
 /// 推送清单列表
@@ -313,8 +293,7 @@ async fn push_manifest_list(name: &str, skip_push: bool) -> Result<(), String> {
     let manifest_list_path = format!("{}.json", name.replace('/', "_"));
     let mut file = File::open(&manifest_list_path).map_err(|e| e.to_string())?;
     let mut content = String::new();
-    file.read_to_string(&mut content)
-        .map_err(|e| e.to_string())?;
+    file.read_to_string(&mut content).map_err(|e| e.to_string())?;
 
     let manifest_list: ManifestList = serde_json::from_str(&content).map_err(|e| e.to_string())?;
 
@@ -342,8 +321,7 @@ async fn pull_manifest_list(name: &str, platform: Option<&str>) -> Result<Manife
             ManifestEntry {
                 media_type: "application/vnd.docker.distribution.manifest.v2+json".to_string(),
                 size: 7023,
-                digest: "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    .to_string(),
+                digest: "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string(),
                 platform: Platform {
                     architecture: "amd64".to_string(),
                     os: "linux".to_string(),
@@ -355,8 +333,7 @@ async fn pull_manifest_list(name: &str, platform: Option<&str>) -> Result<Manife
             ManifestEntry {
                 media_type: "application/vnd.docker.distribution.manifest.v2+json".to_string(),
                 size: 7023,
-                digest: "sha256:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
-                    .to_string(),
+                digest: "sha256:yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy".to_string(),
                 platform: Platform {
                     architecture: "arm64".to_string(),
                     os: "linux".to_string(),
@@ -374,10 +351,7 @@ async fn pull_manifest_list(name: &str, platform: Option<&str>) -> Result<Manife
         let filtered_manifests = manifest_list
             .manifests
             .into_iter()
-            .filter(|m| {
-                m.platform.architecture == target_platform.architecture
-                    && m.platform.os == target_platform.os
-            })
+            .filter(|m| m.platform.architecture == target_platform.architecture && m.platform.os == target_platform.os)
             .collect();
 
         Ok(ManifestList {
@@ -385,7 +359,8 @@ async fn pull_manifest_list(name: &str, platform: Option<&str>) -> Result<Manife
             media_type: manifest_list.media_type,
             manifests: filtered_manifests,
         })
-    } else {
+    }
+    else {
         Ok(manifest_list)
     }
 }
@@ -404,9 +379,7 @@ async fn remove_manifest_list(name: &str) -> Result<(), String> {
 }
 
 /// 列出清单列表
-async fn list_manifest_lists(
-    repository: Option<&str>,
-) -> Result<Vec<(String, String, Vec<String>)>, String> {
+async fn list_manifest_lists(repository: Option<&str>) -> Result<Vec<(String, String, Vec<String>)>, String> {
     let client = RegistryClient::new(None);
 
     match repository {
@@ -416,20 +389,14 @@ async fn list_manifest_lists(
 }
 
 /// 修改清单列表
-async fn modify_manifest_list(
-    name: &str,
-    add: &[String],
-    remove: &[String],
-) -> Result<ManifestList, String> {
+async fn modify_manifest_list(name: &str, add: &[String], remove: &[String]) -> Result<ManifestList, String> {
     // 读取现有清单列表
     let manifest_list_path = format!("{}.json", name.replace('/', "_"));
     let mut file = File::open(&manifest_list_path).map_err(|e| e.to_string())?;
     let mut content = String::new();
-    file.read_to_string(&mut content)
-        .map_err(|e| e.to_string())?;
+    file.read_to_string(&mut content).map_err(|e| e.to_string())?;
 
-    let mut manifest_list: ManifestList =
-        serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    let mut manifest_list: ManifestList = serde_json::from_str(&content).map_err(|e| e.to_string())?;
 
     // 添加新镜像
     for image in add {
@@ -468,8 +435,7 @@ async fn modify_manifest_list(
     // 保存修改后的清单列表
     let updated_content = to_string_pretty(&manifest_list).map_err(|e| e.to_string())?;
     let mut file = File::create(&manifest_list_path).map_err(|e| e.to_string())?;
-    file.write_all(updated_content.as_bytes())
-        .map_err(|e| e.to_string())?;
+    file.write_all(updated_content.as_bytes()).map_err(|e| e.to_string())?;
 
     Ok(manifest_list)
 }
@@ -479,11 +445,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Create {
-            name,
-            images,
-            platform,
-        } => {
+        Commands::Create { name, images, platform } => {
             println!("Creating manifest list: {}", name);
             match create_manifest_list(&name, &images, &platform).await {
                 Ok(manifest_list) => {

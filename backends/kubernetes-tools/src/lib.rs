@@ -15,10 +15,7 @@ use clap::Command;
 /// # 返回值
 /// 返回配置好的 Command 对象
 pub fn create_base_command(name: &'static str, about: &'static str) -> Command {
-    Command::new(name)
-        .about(about)
-        .version("0.1.0")
-        .author("Rusty Docker Team")
+    Command::new(name).about(about).version("0.1.0").author("Rusty Docker Team")
 }
 
 /// 运行 Kubernetes 命令

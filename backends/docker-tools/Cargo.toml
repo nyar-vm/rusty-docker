@@ -71,3 +71,4 @@ futures = { workspace = true }
 futures-util = { workspace = true }
 uuid = { workspace = true }
 base64 = { workspace = true }
+oak-yaml = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.7" }

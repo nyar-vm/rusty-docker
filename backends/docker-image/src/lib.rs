@@ -37,12 +37,7 @@ impl ImageService {
     ///
     /// # 返回
     /// - `Result<String>`: 成功返回镜像 ID，失败返回错误
-    pub async fn build_image(
-        &self,
-        context_path: &str,
-        dockerfile: &str,
-        tag: &str,
-    ) -> Result<String> {
+    pub async fn build_image(&self, context_path: &str, dockerfile: &str, tag: &str) -> Result<String> {
         // 实现镜像构建逻辑
         Ok("image-id".to_string())
     }

@@ -3,8 +3,10 @@
 use clap::Parser;
 use docker_etcd::{EtcdServer, Storage};
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpListener,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -37,17 +39,9 @@ struct Cli {
 /// API请求
 #[derive(Debug, Deserialize)]
 enum ApiRequest {
-    Get {
-        key: String,
-    },
-    Put {
-        key: String,
-        value: String,
-        lease: Option<i64>,
-    },
-    Delete {
-        key: String,
-    },
+    Get { key: String },
+    Put { key: String, value: String, lease: Option<i64> },
+    Delete { key: String },
     List {},
 }
 
@@ -88,11 +82,7 @@ async fn handle_client(mut stream: tokio::net::TcpStream, storage: std::sync::Ar
                 Err(e) => ApiResponse::Error(format!("{:?}", e)),
             },
             ApiRequest::Put { key, value, lease } => {
-                match storage.put(
-                    key.as_bytes().to_vec(),
-                    value.as_bytes().to_vec(),
-                    lease.unwrap_or(0),
-                ) {
+                match storage.put(key.as_bytes().to_vec(), value.as_bytes().to_vec(), lease.unwrap_or(0)) {
                     Ok(kv) => {
                         let value = serde_json::json!({
                             "key": base64::encode(&kv.key),

@@ -7,8 +7,7 @@
 pub mod errors;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::time::SystemTime;
+use std::{collections::HashMap, time::SystemTime};
 
 /// 错误类型
 pub use crate::errors::*;

@@ -1,0 +1,8 @@
+- [ ] 检查 oak-yaml 库的依赖状态
+- [ ] 恢复 kubectl.rs 中的 oak-yaml 使用
+- [ ] 恢复 kustomize.rs 中的 oak-yaml 使用
+- [ ] 恢复 helm.rs 中的 oak-yaml 使用
+- [ ] 恢复 docker-compose.rs 中的 YAML 解析
+- [ ] 为 oak-yaml 添加缺失的 YAML Value 功能
+- [ ] 运行 cargo check 验证
+- [ ] 测试 YAML 解析功能

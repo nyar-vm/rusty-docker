@@ -1,6 +1,5 @@
 #![warn(missing_docs)]
 
-
 use docker_types::DockerError;
 use serde::{Deserialize, Serialize};
 
@@ -153,9 +152,7 @@ pub trait NetworkManager: Send + Sync {
     /// # 返回值
     /// * `Ok(Vec<NetworkInfo>)` - 网络列表
     /// * `Err(DockerError)` - 列出失败的错误信息
-    fn list_networks(
-        &mut self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>>;
+    fn list_networks(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>>;
 
     /// 查看网络详细信息
     ///

@@ -1,7 +1,9 @@
 use docker_types::{DockerError, Result as DockerResult};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use uuid::Uuid;
 
 /// 用户角色
@@ -107,25 +109,14 @@ impl UserManager {
             last_login: None,
         };
 
-        users
-            .lock()
-            .unwrap()
-            .insert(admin_user.id.clone(), admin_user);
+        users.lock().unwrap().insert(admin_user.id.clone(), admin_user);
 
         Self { users }
     }
 
     /// 创建用户
-    pub fn create_user(
-        &self,
-        username: String,
-        password: String,
-        role: Role,
-    ) -> DockerResult<User> {
-        let mut users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+    pub fn create_user(&self, username: String, password: String, role: Role) -> DockerResult<User> {
+        let mut users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         // 检查用户名是否已存在
         for user in users.values() {
@@ -149,23 +140,14 @@ impl UserManager {
 
     /// 获取用户
     pub fn get_user(&self, user_id: &str) -> DockerResult<User> {
-        let users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
-        users
-            .get(user_id)
-            .cloned()
-            .ok_or_else(|| DockerError::container_error("用户不存在".to_string()))
+        users.get(user_id).cloned().ok_or_else(|| DockerError::container_error("用户不存在".to_string()))
     }
 
     /// 获取用户通过用户名
     pub fn get_user_by_username(&self, username: &str) -> DockerResult<User> {
-        let users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         users
             .values()
@@ -176,10 +158,7 @@ impl UserManager {
 
     /// 列出所有用户
     pub fn list_users(&self) -> DockerResult<Vec<User>> {
-        let users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         Ok(users.values().cloned().collect())
     }
@@ -192,10 +171,7 @@ impl UserManager {
         password: Option<String>,
         role: Option<Role>,
     ) -> DockerResult<User> {
-        let mut users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let mut users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         // 先检查用户是否存在
         if !users.contains_key(user_id) {
@@ -233,25 +209,17 @@ impl UserManager {
 
     /// 删除用户
     pub fn delete_user(&self, user_id: &str) -> DockerResult<()> {
-        let mut users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let mut users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         if !users.contains_key(user_id) {
             return Err(DockerError::container_error("用户不存在".to_string()));
         }
 
         // 不允许删除最后一个管理员用户
-        let admin_count = users
-            .values()
-            .filter(|user| user.role == Role::Admin)
-            .count();
+        let admin_count = users.values().filter(|user| user.role == Role::Admin).count();
 
         if admin_count == 1 && users.get(user_id).unwrap().role == Role::Admin {
-            return Err(DockerError::container_error(
-                "不能删除最后一个管理员用户".to_string(),
-            ));
+            return Err(DockerError::container_error("不能删除最后一个管理员用户".to_string()));
         }
 
         users.remove(user_id);
@@ -260,10 +228,7 @@ impl UserManager {
 
     /// 验证用户凭据
     pub fn authenticate(&self, username: &str, password: &str) -> DockerResult<User> {
-        let mut users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let mut users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         let user = users
             .values_mut()
@@ -291,10 +256,7 @@ impl UserManager {
 
     /// 更新用户角色
     pub fn update_user_role(&self, user_id: &str, role: Role) -> DockerResult<User> {
-        let mut users = self
-            .users
-            .lock()
-            .map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
+        let mut users = self.users.lock().map_err(|e| DockerError::io_error("lock_error", e.to_string()))?;
 
         // 先检查用户是否存在
         if !users.contains_key(user_id) {
@@ -308,9 +270,7 @@ impl UserManager {
             let admin_count = users.values().filter(|u| u.role == Role::Admin).count();
 
             if admin_count == 1 && role != Role::Admin {
-                return Err(DockerError::container_error(
-                    "不能将最后一个管理员用户的角色修改为非管理员".to_string(),
-                ));
+                return Err(DockerError::container_error("不能将最后一个管理员用户的角色修改为非管理员".to_string()));
             }
         }
 
