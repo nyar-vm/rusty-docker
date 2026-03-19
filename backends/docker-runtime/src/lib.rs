@@ -53,7 +53,7 @@ pub enum ContainerStatus {
 pub type Result<T> = std::result::Result<T, DockerError>;
 
 /// ContainerManager trait 定义了容器管理的核心方法
-pub trait ContainerManager {
+pub trait ContainerManager: Send + Sync {
     /// 创建一个新容器
     ///
     /// # 参数
@@ -167,7 +167,7 @@ pub trait ContainerManager {
 }
 
 /// RuntimeManager trait 定义了运行时管理的核心方法
-pub trait RuntimeManager {
+pub trait RuntimeManager: Send + Sync {
     /// 初始化运行时
     ///
     /// # 返回值
@@ -230,44 +230,44 @@ pub use macos::MacOSContainerManager;
 /// Windows 平台的容器管理器
 pub use windows::WindowsContainerManager;
 
+use once_cell::sync::Lazy;
+
+/// 容器管理器单例
+static CONTAINER_MANAGER: Lazy<Box<dyn ContainerManager>> = Lazy::new(|| {
+    #[cfg(target_os = "linux")]
+    return Box::new(LinuxContainerManager::new());
+    
+    #[cfg(target_os = "macos")]
+    return Box::new(MacOSContainerManager::new());
+    
+    #[cfg(target_os = "windows")]
+    return Box::new(WindowsContainerManager::new());
+});
+
+/// 运行时管理器单例
+static RUNTIME_MANAGER: Lazy<Box<dyn RuntimeManager>> = Lazy::new(|| {
+    #[cfg(target_os = "linux")]
+    return Box::new(LinuxContainerManager::new());
+    
+    #[cfg(target_os = "macos")]
+    return Box::new(MacOSContainerManager::new());
+    
+    #[cfg(target_os = "windows")]
+    return Box::new(WindowsContainerManager::new());
+});
+
 /// 获取适合当前平台的容器管理器
 ///
 /// # 返回值
-/// * `Box<dyn ContainerManager>` - 容器管理器实例
-pub fn get_container_manager() -> Box<dyn ContainerManager> {
-    #[cfg(target_os = "linux")]
-    {
-        Box::new(LinuxContainerManager::new())
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        Box::new(MacOSContainerManager::new())
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        Box::new(WindowsContainerManager::new())
-    }
+/// * `&'static dyn ContainerManager` - 容器管理器实例
+pub fn get_container_manager() -> &'static dyn ContainerManager {
+    CONTAINER_MANAGER.as_ref()
 }
 
 /// 获取适合当前平台的运行时管理器
 ///
 /// # 返回值
-/// * `Box<dyn RuntimeManager>` - 运行时管理器实例
-pub fn get_runtime_manager() -> Box<dyn RuntimeManager> {
-    #[cfg(target_os = "linux")]
-    {
-        Box::new(LinuxContainerManager::new())
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        Box::new(MacOSContainerManager::new())
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        Box::new(WindowsContainerManager::new())
-    }
+/// * `&'static dyn RuntimeManager` - 运行时管理器实例
+pub fn get_runtime_manager() -> &'static dyn RuntimeManager {
+    RUNTIME_MANAGER.as_ref()
 }

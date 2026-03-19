@@ -512,31 +512,8 @@ async fn main() -> Result<(), DockerError> {
     info!("Starting docker tool");
     let cli = Cli::parse();
 
-    // 初始化 Docker 客户端，带重试机制
-    let docker = Arc::new(tokio::sync::Mutex::new({
-        let mut attempts = 0;
-        let max_attempts = 3;
-        loop {
-            match Docker::new() {
-                Ok(client) => break client,
-                Err(e) => {
-                    attempts += 1;
-                    if attempts < max_attempts {
-                        warn!(
-                            "Failed to initialize Docker client: {:?}, retrying... (attempt {}/{})\n",
-                            e, attempts, max_attempts
-                        );
-                        // Exponential backoff: 50ms, 100ms, 200ms
-                        let delay = 50 * 2u64.pow(attempts as u32 - 1);
-                        tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
-                    }
-                    else {
-                        return Err(DockerError::internal(format!("Failed to initialize Docker client: {:?}", e)));
-                    }
-                }
-            }
-        }
-    }));
+    // 初始化 Docker 客户端
+    let docker = Arc::new(tokio::sync::Mutex::new(Docker::new()?));
 
     // 初始化 ImageManager
     let image_manager = ImageManager::new();
