@@ -10,9 +10,7 @@ pub struct FileShareManager {
 impl FileShareManager {
     /// 创建新的文件共享管理器
     pub fn new() -> Self {
-        Self {
-            mounts: Vec::new(),
-        }
+        Self { mounts: Vec::new() }
     }
 
     /// 添加挂载点
@@ -61,7 +59,8 @@ impl FileShareManager {
             let drive = &path[0..1].to_uppercase();
             let rest = &path[1..];
             format!("{}:{}", drive, rest.replace('/', "\\"))
-        } else {
+        }
+        else {
             wsl_path.to_string()
         }
     }

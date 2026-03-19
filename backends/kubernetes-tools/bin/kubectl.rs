@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use serde_json::{Value, to_string_pretty};
 use oak_yaml::from_str;
+use serde_json::{Value, to_string_pretty};
 use std::{collections::HashMap, error::Error, fs::File, io::Read, path::Path};
 use tokio::fs::read_to_string;
 use wae_request::{HttpClient, HttpClientConfig, HttpResponse};

@@ -236,10 +236,10 @@ use once_cell::sync::Lazy;
 static CONTAINER_MANAGER: Lazy<Box<dyn ContainerManager>> = Lazy::new(|| {
     #[cfg(target_os = "linux")]
     return Box::new(LinuxContainerManager::new());
-    
+
     #[cfg(target_os = "macos")]
     return Box::new(MacOSContainerManager::new());
-    
+
     #[cfg(target_os = "windows")]
     return Box::new(WindowsContainerManager::new());
 });
@@ -248,10 +248,10 @@ static CONTAINER_MANAGER: Lazy<Box<dyn ContainerManager>> = Lazy::new(|| {
 static RUNTIME_MANAGER: Lazy<Box<dyn RuntimeManager>> = Lazy::new(|| {
     #[cfg(target_os = "linux")]
     return Box::new(LinuxContainerManager::new());
-    
+
     #[cfg(target_os = "macos")]
     return Box::new(MacOSContainerManager::new());
-    
+
     #[cfg(target_os = "windows")]
     return Box::new(WindowsContainerManager::new());
 });

@@ -1,5 +1,4 @@
-use std::process::Command;
-use std::str;
+use std::{process::Command, str};
 
 /// WSL 2 管理器
 #[derive(Debug)]
@@ -11,27 +10,19 @@ pub struct Wsl2Manager {
 impl Wsl2Manager {
     /// 创建新的 WSL 2 管理器
     pub fn new(distro_name: &str) -> Self {
-        Self {
-            distro_name: distro_name.to_string(),
-        }
+        Self { distro_name: distro_name.to_string() }
     }
 
     /// 检查 WSL 2 是否已安装
     pub fn is_wsl2_installed(&self) -> bool {
-        let output = Command::new("wsl")
-            .args(&["--version"])
-            .output()
-            .expect("Failed to execute wsl command");
+        let output = Command::new("wsl").args(&["--version"]).output().expect("Failed to execute wsl command");
 
         output.status.success()
     }
 
     /// 检查指定的 WSL 发行版是否存在
     pub fn is_distro_exists(&self) -> bool {
-        let output = Command::new("wsl")
-            .args(&["-l", "-v"])
-            .output()
-            .expect("Failed to execute wsl command");
+        let output = Command::new("wsl").args(&["-l", "-v"]).output().expect("Failed to execute wsl command");
 
         let output_str = str::from_utf8(&output.stdout).unwrap();
         output_str.contains(&self.distro_name)
@@ -75,10 +66,8 @@ impl Wsl2Manager {
 
     /// 停止 WSL 发行版
     pub fn stop_distro(&self) -> Result<(), String> {
-        let output = Command::new("wsl")
-            .args(&["--terminate", &self.distro_name])
-            .output()
-            .expect("Failed to execute wsl command");
+        let output =
+            Command::new("wsl").args(&["--terminate", &self.distro_name]).output().expect("Failed to execute wsl command");
 
         if !output.status.success() {
             let error_str = str::from_utf8(&output.stderr).unwrap();

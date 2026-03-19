@@ -1,5 +1,4 @@
-use std::process::Command;
-use std::str;
+use std::{process::Command, str};
 
 /// 网络管理器
 #[derive(Debug)]
@@ -11,9 +10,7 @@ pub struct NetworkManager {
 impl NetworkManager {
     /// 创建新的网络管理器
     pub fn new(network_name: &str) -> Self {
-        Self {
-            network_name: network_name.to_string(),
-        }
+        Self { network_name: network_name.to_string() }
     }
 
     /// 创建网络
@@ -31,10 +28,7 @@ impl NetworkManager {
 
         // 创建网络
         let output = Command::new("powershell")
-            .args(&[
-                "-Command",
-                &format!("New-VMSwitch -Name '{}' -SwitchType Internal", self.network_name),
-            ])
+            .args(&["-Command", &format!("New-VMSwitch -Name '{}' -SwitchType Internal", self.network_name)])
             .output()
             .expect("Failed to execute PowerShell command");
 
@@ -53,9 +47,7 @@ impl NetworkManager {
                 "-Command",
                 &format!(
                     "New-NetIPAddress -InterfaceAlias '{}' -IPAddress {} -PrefixLength {}",
-                    self.network_name,
-                    ip_address,
-                    subnet_mask
+                    self.network_name, ip_address, subnet_mask
                 ),
             ])
             .output()

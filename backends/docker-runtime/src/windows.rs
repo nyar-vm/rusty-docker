@@ -1,11 +1,8 @@
 use super::{Container, ContainerManager, ContainerStatus, Result, RuntimeManager};
+use crate::{file_share::FileShareManager, hyperv::HyperVManager, network_manager::NetworkManager, wsl2::Wsl2Manager};
 use docker_types::DockerError;
 use rand;
 use std::{collections::HashMap, sync::RwLock};
-use crate::hyperv::HyperVManager;
-use crate::wsl2::Wsl2Manager;
-use crate::file_share::FileShareManager;
-use crate::network_manager::NetworkManager;
 
 pub struct WindowsContainerManager {
     containers: RwLock<HashMap<String, Container>>,
@@ -66,10 +63,13 @@ impl ContainerManager for WindowsContainerManager {
                 Ok(_) => (),
                 Err(e) => return Err(DockerError::runtime_error(&format!("Failed to install Docker in WSL: {}", e))),
             }
-        } else {
+        }
+        else {
             // 使用 Hyper-V 模式
             if !self.hyperv_manager.is_hyperv_enabled() {
-                return Err(DockerError::runtime_error("Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2."));
+                return Err(DockerError::runtime_error(
+                    "Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2.",
+                ));
             }
 
             // 创建 Hyper-V 虚拟机
@@ -138,9 +138,10 @@ impl ContainerManager for WindowsContainerManager {
             for (host_path, container_path) in &self.file_share_manager.mounts {
                 let wsl_path = self.file_share_manager.windows_to_wsl_path(host_path.to_str().unwrap());
                 // 在 WSL 中创建挂载点
-                let command = format!("mkdir -p {} && mount --bind {} {}", 
-                    container_path.to_str().unwrap(), 
-                    wsl_path, 
+                let command = format!(
+                    "mkdir -p {} && mount --bind {} {}",
+                    container_path.to_str().unwrap(),
+                    wsl_path,
                     container_path.to_str().unwrap()
                 );
                 match self.wsl2_manager.exec_command(&command) {
@@ -154,7 +155,8 @@ impl ContainerManager for WindowsContainerManager {
                 Ok(_) => (),
                 Err(e) => return Err(DockerError::runtime_error(&format!("Failed to configure WSL network: {}", e))),
             }
-        } else {
+        }
+        else {
             // 使用 Hyper-V 模式
             match self.hyperv_manager.start_vm(container_id) {
                 Ok(_) => (),
@@ -183,7 +185,8 @@ impl ContainerManager for WindowsContainerManager {
                 Ok(_) => (),
                 Err(e) => return Err(DockerError::runtime_error(&format!("Failed to stop WSL distro: {}", e))),
             }
-        } else {
+        }
+        else {
             // 使用 Hyper-V 模式
             match self.hyperv_manager.stop_vm(container_id) {
                 Ok(_) => (),
@@ -209,7 +212,8 @@ impl ContainerManager for WindowsContainerManager {
                 Ok(_) => (),
                 Err(e) => return Err(DockerError::runtime_error(&format!("Failed to stop WSL distro: {}", e))),
             }
-        } else {
+        }
+        else {
             // 使用 Hyper-V 模式
             match self.hyperv_manager.remove_vm(container_id) {
                 Ok(_) => (),
@@ -289,10 +293,13 @@ impl RuntimeManager for WindowsContainerManager {
                 Ok(_) => (),
                 Err(e) => return Err(DockerError::runtime_error(&format!("Failed to create WSL distro: {}", e))),
             }
-        } else {
+        }
+        else {
             // 使用 Hyper-V 模式
             if !self.hyperv_manager.is_hyperv_enabled() {
-                return Err(DockerError::runtime_error("Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2."));
+                return Err(DockerError::runtime_error(
+                    "Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2.",
+                ));
             }
         }
         Ok(())

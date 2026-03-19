@@ -1,5 +1,4 @@
-use std::process::Command;
-use std::str;
+use std::{process::Command, str};
 
 /// Hyper-V 虚拟机管理器
 #[derive(Debug)]
@@ -11,9 +10,7 @@ pub struct HyperVManager {
 impl HyperVManager {
     /// 创建新的 Hyper-V 管理器
     pub fn new(vm_prefix: &str) -> Self {
-        Self {
-            vm_prefix: vm_prefix.to_string(),
-        }
+        Self { vm_prefix: vm_prefix.to_string() }
     }
 
     /// 检查 Hyper-V 是否已启用
@@ -129,7 +126,13 @@ impl HyperVManager {
     /// 列出所有虚拟机
     pub fn list_vms(&self) -> Result<Vec<String>, String> {
         let output = Command::new("powershell")
-            .args(&["-Command", &format!("Get-VM | Where-Object {{ $_.Name -like '{}*' }} | Select-Object -ExpandProperty Name", self.vm_prefix)])
+            .args(&[
+                "-Command",
+                &format!(
+                    "Get-VM | Where-Object {{ $_.Name -like '{}*' }} | Select-Object -ExpandProperty Name",
+                    self.vm_prefix
+                ),
+            ])
             .output()
             .expect("Failed to execute PowerShell command");
 
@@ -139,11 +142,7 @@ impl HyperVManager {
         }
 
         let output_str = str::from_utf8(&output.stdout).unwrap();
-        let vms: Vec<String> = output_str
-            .lines()
-            .filter(|line| !line.is_empty())
-            .map(|line| line.trim().to_string())
-            .collect();
+        let vms: Vec<String> = output_str.lines().filter(|line| !line.is_empty()).map(|line| line.trim().to_string()).collect();
 
         Ok(vms)
     }
