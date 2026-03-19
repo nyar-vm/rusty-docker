@@ -5,3 +5,4 @@
 pub mod parser;
 pub mod executor;
 pub mod instructions;
+pub mod context;

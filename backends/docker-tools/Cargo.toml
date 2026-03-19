@@ -74,3 +74,4 @@ uuid = { workspace = true }
 base64 = { workspace = true }
 oak-yaml = { workspace = true }
 oak-dockerfile = { workspace = true }
+tempfile = { workspace = true }

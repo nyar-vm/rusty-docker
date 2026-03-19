@@ -1,8 +1,10 @@
 //! Docker 工具集的通用功能库
-//!
+//! 
 //! 提供 docker、docker-compose、dockerd 等工具共享的通用功能，包括镜像管理
 
 #![warn(missing_docs)]
+
+pub mod dockerfile;
 
 use clap::{Arg, ArgAction, Command};
 use docker_image::ImageService;
