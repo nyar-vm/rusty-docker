@@ -6,14 +6,15 @@ use docker_types::DockerError;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::collections::HashSet;
+use regex;
 
 /// Build context manager
 #[derive(Debug)]
 pub struct BuildContext {
     /// Root directory of the build context
     root: PathBuf,
-    /// Ignored paths based on .dockerignore
-    ignored_paths: HashSet<PathBuf>,
+    /// Ignored patterns based on .dockerignore
+    ignored_patterns: Vec<String>,
 }
 
 impl BuildContext {
@@ -29,44 +30,41 @@ impl BuildContext {
             return Err(DockerError::container_error(format!("Build context directory not found: {:?}", root)));
         }
         
-        let ignored_paths = Self::read_dockerignore(root)?;
+        let ignored_patterns = Self::read_dockerignore(root)?;
         
         Ok(Self {
             root: root.to_path_buf(),
-            ignored_paths,
+            ignored_patterns,
         })
     }
     
-    /// Read .dockerignore file and return ignored paths
+    /// Read .dockerignore file and return ignored patterns
     ///
     /// # Parameters
     /// * `root` - The root directory of the build context
     ///
     /// # Returns
-    /// * `Result<HashSet<PathBuf>, DockerError>` - The set of ignored paths
-    fn read_dockerignore(root: &Path) -> Result<HashSet<PathBuf>, DockerError> {
+    /// * `Result<Vec<String>, DockerError>` - The list of ignored patterns
+    fn read_dockerignore(root: &Path) -> Result<Vec<String>, DockerError> {
         let dockerignore_path = root.join(".dockerignore");
         if !dockerignore_path.exists() {
-            return Ok(HashSet::new());
+            return Ok(Vec::new());
         }
         
         let content = fs::read_to_string(&dockerignore_path)
             .map_err(|e| DockerError::container_error(format!("Failed to read .dockerignore: {}", e)))?;
         
-        let mut ignored = HashSet::new();
+        let mut patterns = Vec::new();
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
             
-            // Convert the pattern to a PathBuf
-            let pattern = Path::new(line);
-            let absolute_path = root.join(pattern);
-            ignored.insert(absolute_path);
+            patterns.push(line.to_string());
         }
         
-        Ok(ignored)
+        Ok(patterns)
     }
     
     /// Check if a path is ignored
@@ -77,21 +75,38 @@ impl BuildContext {
     /// # Returns
     /// * `bool` - Whether the path is ignored
     pub fn is_ignored(&self, path: &Path) -> bool {
-        // Check if the path itself is ignored
-        if self.ignored_paths.contains(path) {
-            return true;
-        }
+        // Get the relative path from the build context root
+        let relative_path = match path.strip_prefix(&self.root) {
+            Ok(path) => path,
+            Err(_) => return false, // Path is outside the build context, not ignored
+        };
         
-        // Check if any parent directory is ignored
-        let mut current = path;
-        while let Some(parent) = current.parent() {
-            if self.ignored_paths.contains(parent) {
+        let relative_path_str = relative_path.to_string_lossy();
+        
+        // Check if the path matches any ignored pattern
+        for pattern in &self.ignored_patterns {
+            if self.matches_pattern(&relative_path_str, pattern) {
                 return true;
             }
-            current = parent;
         }
         
         false
+    }
+    
+    /// Check if a path matches a pattern
+    ///
+    /// # Parameters
+    /// * `path` - The path to check
+    /// * `pattern` - The pattern to match
+    ///
+    /// # Returns
+    /// * `bool` - Whether the path matches the pattern
+    fn matches_pattern(&self, path: &str, pattern: &str) -> bool {
+        // Simple glob pattern matching
+        // This is a basic implementation, real Dockerfile .dockerignore uses more complex rules
+        let pattern = pattern.replace("*", ".*");
+        let regex = regex::Regex::new(&format!("^{}$", pattern)).unwrap();
+        regex.is_match(path)
     }
     
     /// Get the absolute path of a file in the build context

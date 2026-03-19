@@ -75,3 +75,4 @@ base64 = { workspace = true }
 oak-yaml = { workspace = true }
 oak-dockerfile = { workspace = true }
 tempfile = { workspace = true }
+regex = "1.10.0"
