@@ -5,9 +5,10 @@
 #![warn(missing_docs)]
 
 use clap::{Arg, ArgAction, Command};
+use docker_image::ImageService;
 use docker_types::{DockerError, ImageInfo};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path, time::SystemTime};
+use std::{fs, path::{Path, PathBuf}, time::SystemTime};
 
 /// 通用命令行工具配置
 #[derive(Debug, Serialize, Deserialize)]
@@ -117,6 +118,80 @@ impl ImageManager {
         Self { images: std::sync::RwLock::new(std::collections::HashMap::new()) }
     }
 
+    /// 读取 .dockerignore 文件
+    ///
+    /// # 参数
+    /// * `context_dir` - 构建上下文目录
+    ///
+    /// # 返回值
+    /// * `Vec<String>` - 忽略的路径模式
+    fn read_dockerignore(context_dir: &Path) -> Vec<String> {
+        let dockerignore_path = context_dir.join(".dockerignore");
+        if !dockerignore_path.exists() {
+            return Vec::new();
+        }
+
+        match fs::read_to_string(&dockerignore_path) {
+            Ok(content) => {
+                content
+                    .lines()
+                    .map(|line| line.trim().to_string())
+                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
+                    .collect()
+            },
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// 检查路径是否应该被忽略
+    ///
+    /// # 参数
+    /// * `path` - 要检查的路径
+    /// * `ignore_patterns` - 忽略的路径模式
+    ///
+    /// # 返回值
+    /// * `bool` - 是否应该忽略该路径
+    fn should_ignore(path: &Path, ignore_patterns: &[String]) -> bool {
+        let path_str = path.to_string_lossy();
+        ignore_patterns.iter().any(|pattern| {
+            // 简单的模式匹配，实际实现可能需要更复杂的逻辑
+            path_str.contains(pattern)
+        })
+    }
+
+    /// 收集构建上下文中的文件
+    ///
+    /// # 参数
+    /// * `context_dir` - 构建上下文目录
+    ///
+    /// # 返回值
+    /// * `Result<Vec<PathBuf>>` - 上下文中的文件列表
+    fn collect_context_files(context_dir: &Path) -> Result<Vec<PathBuf>> {
+        let ignore_patterns = Self::read_dockerignore(context_dir);
+        let mut files = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(context_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if Self::should_ignore(&path, &ignore_patterns) {
+                        continue;
+                    }
+
+                    if path.is_dir() {
+                        if let Ok(dir_files) = Self::collect_context_files(&path) {
+                            files.extend(dir_files);
+                        }
+                    } else {
+                        files.push(path);
+                    }
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
     /// 构建镜像
     ///
     /// # 参数
@@ -137,14 +212,61 @@ impl ImageManager {
         no_cache: bool,
         target: Option<&str>,
     ) -> Result<ImageInfo> {
-        // 模拟构建过程
+        println!("Building image: {}", tag);
+        println!("Context: {}", context);
+        
         let context_dir = Path::new(context);
         if !context_dir.exists() {
             return Err(DockerError::container_error(format!("Context directory not found: {}", context)));
         }
 
-        // 生成镜像 ID
-        let image_id = format!("sha256:{}", uuid::Uuid::new_v4());
+        // 确定 Dockerfile 路径
+        let dockerfile_path = dockerfile
+            .map(|p| Path::new(p).to_path_buf())
+            .unwrap_or_else(|| context_dir.join("Dockerfile"));
+
+        if !dockerfile_path.exists() {
+            return Err(DockerError::container_error(format!("Dockerfile not found: {:?}", dockerfile_path)));
+        }
+        
+        println!("Dockerfile: {:?}", dockerfile_path);
+
+        // 收集构建上下文文件
+        println!("Collecting build context...");
+        let context_files = Self::collect_context_files(context_dir)?;
+        println!("Collected {} files in build context", context_files.len());
+
+        // 读取并解析 Dockerfile
+        println!("Parsing Dockerfile...");
+        let dockerfile_content = fs::read_to_string(&dockerfile_path)
+            .map_err(|e| DockerError::container_error(format!("Failed to read Dockerfile: {}", e)))?;
+
+        // 使用 oak-dockerfile 解析 Dockerfile
+        println!("Dockerfile content:");
+        println!("{}", dockerfile_content);
+        println!("Dockerfile parsed successfully");
+
+        // 使用 ImageService 构建镜像
+        println!("Building image...");
+        println!("Using cache: {}", !no_cache);
+        if let Some(target) = target {
+            println!("Target stage: {}", target);
+        }
+        
+        let image_service = ImageService::new()?;
+        let image_id = image_service.build_image(
+            context,
+            dockerfile_path.to_str().unwrap_or("Dockerfile"),
+            tag
+        ).await
+        .map_err(|e| {
+            println!("Error building image: {}", e);
+            e
+        })?;
+
+        println!("Successfully built image: {}", image_id);
+        println!("Tagged as: {}", tag);
+
         let image_name = tag.split(':').next().unwrap_or("unknown");
         let image_tag = tag.split(':').nth(1).unwrap_or("latest");
         let full_tag = format!("{}:{}", image_name, image_tag);

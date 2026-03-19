@@ -902,6 +902,7 @@ async fn main() -> Result<(), DockerError> {
         }
         Commands::Build { context, tag, dockerfile, no_cache, target, pull, force_rm, build_arg } => {
             info!("Building image: {}, context: {}", tag, context);
+            println!("Build args: {:?}", build_arg);
             let image = image_manager.build_image(&context, &tag, dockerfile.as_deref(), no_cache, target.as_deref()).await?;
             info!("Image built successfully: {}", image.id);
             println!("Image built: {}", image.id);
