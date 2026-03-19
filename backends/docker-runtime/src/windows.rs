@@ -2,14 +2,28 @@ use super::{Container, ContainerManager, ContainerStatus, Result, RuntimeManager
 use docker_types::DockerError;
 use rand;
 use std::{collections::HashMap, sync::RwLock};
+use crate::hyperv::HyperVManager;
+use crate::wsl2::Wsl2Manager;
+use crate::file_share::FileShareManager;
+use crate::network_manager::NetworkManager;
 
 pub struct WindowsContainerManager {
     containers: RwLock<HashMap<String, Container>>,
+    hyperv_manager: HyperVManager,
+    wsl2_manager: Wsl2Manager,
+    file_share_manager: FileShareManager,
+    network_manager: NetworkManager,
 }
 
 impl WindowsContainerManager {
     pub fn new() -> Self {
-        Self { containers: RwLock::new(HashMap::new()) }
+        Self {
+            containers: RwLock::new(HashMap::new()),
+            hyperv_manager: HyperVManager::new("rusty-docker"),
+            wsl2_manager: Wsl2Manager::new("rusty-docker"),
+            file_share_manager: FileShareManager::new(),
+            network_manager: NetworkManager::new("rusty-docker-network"),
+        }
     }
 }
 
@@ -32,6 +46,62 @@ impl ContainerManager for WindowsContainerManager {
     ) -> Result<Container> {
         // 生成容器 ID
         let container_id: String = (0..32).map(|_| rand::random::<char>()).collect();
+
+        // 检查 WSL 2 是否已安装
+        if self.wsl2_manager.is_wsl2_installed() {
+            // 使用 WSL 2 模式
+            match self.wsl2_manager.create_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to create WSL distro: {}", e))),
+            }
+
+            // 启动 WSL 发行版
+            match self.wsl2_manager.start_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to start WSL distro: {}", e))),
+            }
+
+            // 安装 Docker
+            match self.wsl2_manager.install_docker() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to install Docker in WSL: {}", e))),
+            }
+        } else {
+            // 使用 Hyper-V 模式
+            if !self.hyperv_manager.is_hyperv_enabled() {
+                return Err(DockerError::runtime_error("Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2."));
+            }
+
+            // 创建 Hyper-V 虚拟机
+            match self.hyperv_manager.create_vm(&container_id, 2048, 20) {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to create Hyper-V VM: {}", e))),
+            }
+        }
+
+        // 处理卷挂载
+        for volume in &volumes {
+            // 解析卷挂载格式: host_path:container_path
+            if let Some((host_path, container_path)) = volume.split_once(':') {
+                match self.file_share_manager.add_mount(host_path, container_path) {
+                    Ok(_) => (),
+                    Err(e) => return Err(DockerError::runtime_error(&format!("Failed to add mount: {}", e))),
+                }
+            }
+        }
+
+        // 处理端口映射
+        for port in &ports {
+            // 解析端口映射格式: host_port:container_port
+            if let Some((host_port_str, container_port_str)) = port.split_once(':') {
+                if let (Ok(host_port), Ok(container_port)) = (host_port_str.parse::<u16>(), container_port_str.parse::<u16>()) {
+                    match self.network_manager.configure_port_mapping(host_port, container_port) {
+                        Ok(_) => (),
+                        Err(e) => return Err(DockerError::runtime_error(&format!("Failed to configure port mapping: {}", e))),
+                    }
+                }
+            }
+        }
 
         // 创建容器
         let container = Container {
@@ -56,6 +126,45 @@ impl ContainerManager for WindowsContainerManager {
     }
 
     fn start(&mut self, container_id: &str) -> Result<()> {
+        // 检查 WSL 2 是否已安装
+        if self.wsl2_manager.is_wsl2_installed() {
+            // 使用 WSL 2 模式
+            match self.wsl2_manager.start_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to start WSL distro: {}", e))),
+            }
+
+            // 处理 WSL 2 文件共享
+            for (host_path, container_path) in &self.file_share_manager.mounts {
+                let wsl_path = self.file_share_manager.windows_to_wsl_path(host_path.to_str().unwrap());
+                // 在 WSL 中创建挂载点
+                let command = format!("mkdir -p {} && mount --bind {} {}", 
+                    container_path.to_str().unwrap(), 
+                    wsl_path, 
+                    container_path.to_str().unwrap()
+                );
+                match self.wsl2_manager.exec_command(&command) {
+                    Ok(_) => (),
+                    Err(e) => return Err(DockerError::runtime_error(&format!("Failed to mount volume in WSL: {}", e))),
+                }
+            }
+
+            // 配置 WSL 网络
+            match self.network_manager.configure_wsl_network("rusty-docker") {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to configure WSL network: {}", e))),
+            }
+        } else {
+            // 使用 Hyper-V 模式
+            match self.hyperv_manager.start_vm(container_id) {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to start Hyper-V VM: {}", e))),
+            }
+
+            // 处理 Hyper-V 文件共享（这里需要具体的 Hyper-V 文件共享实现）
+            // 暂时跳过，因为需要更复杂的 Hyper-V 集成
+        }
+
         let mut containers = self.containers.write().unwrap();
         if let Some(container) = containers.get_mut(container_id) {
             container.status = ContainerStatus::Running;
@@ -67,6 +176,21 @@ impl ContainerManager for WindowsContainerManager {
     }
 
     fn stop(&mut self, container_id: &str) -> Result<()> {
+        // 检查 WSL 2 是否已安装
+        if self.wsl2_manager.is_wsl2_installed() {
+            // 使用 WSL 2 模式
+            match self.wsl2_manager.stop_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to stop WSL distro: {}", e))),
+            }
+        } else {
+            // 使用 Hyper-V 模式
+            match self.hyperv_manager.stop_vm(container_id) {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to stop Hyper-V VM: {}", e))),
+            }
+        }
+
         let mut containers = self.containers.write().unwrap();
         if let Some(container) = containers.get_mut(container_id) {
             container.status = ContainerStatus::Stopped;
@@ -78,6 +202,34 @@ impl ContainerManager for WindowsContainerManager {
     }
 
     fn delete(&mut self, container_id: &str) -> Result<()> {
+        // 检查 WSL 2 是否已安装
+        if self.wsl2_manager.is_wsl2_installed() {
+            // 使用 WSL 2 模式
+            match self.wsl2_manager.stop_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to stop WSL distro: {}", e))),
+            }
+        } else {
+            // 使用 Hyper-V 模式
+            match self.hyperv_manager.remove_vm(container_id) {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to remove Hyper-V VM: {}", e))),
+            }
+        }
+
+        // 移除端口映射
+        let containers = self.containers.read().unwrap();
+        if let Some(container) = containers.get(container_id) {
+            for port in &container.ports {
+                // 解析端口映射格式: host_port:container_port
+                if let Some((host_port_str, _)) = port.split_once(':') {
+                    if let Ok(host_port) = host_port_str.parse::<u16>() {
+                        let _ = self.network_manager.remove_port_mapping(host_port);
+                    }
+                }
+            }
+        }
+
         let mut containers = self.containers.write().unwrap();
         if containers.remove(container_id).is_some() {
             Ok(())
@@ -130,7 +282,19 @@ impl ContainerManager for WindowsContainerManager {
 
 impl RuntimeManager for WindowsContainerManager {
     fn initialize(&mut self) -> Result<()> {
-        // 模拟初始化
+        // 检查 WSL 2 是否已安装
+        if self.wsl2_manager.is_wsl2_installed() {
+            // 使用 WSL 2 模式
+            match self.wsl2_manager.create_distro() {
+                Ok(_) => (),
+                Err(e) => return Err(DockerError::runtime_error(&format!("Failed to create WSL distro: {}", e))),
+            }
+        } else {
+            // 使用 Hyper-V 模式
+            if !self.hyperv_manager.is_hyperv_enabled() {
+                return Err(DockerError::runtime_error("Hyper-V is not enabled. Please enable Hyper-V in Windows Features or install WSL 2."));
+            }
+        }
         Ok(())
     }
 

@@ -2,7 +2,7 @@ use chrono;
 use clap::{Parser, Subcommand};
 use dirs;
 use serde::{Deserialize, Serialize};
-use oak_yaml;
+use oak_yaml::from_str;
 use std::{fs, path::Path};
 use tokio;
 

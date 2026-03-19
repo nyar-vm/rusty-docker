@@ -204,6 +204,18 @@ mod linux;
 mod macos;
 
 #[cfg(target_os = "windows")]
+mod hyperv;
+
+#[cfg(target_os = "windows")]
+mod wsl2;
+
+#[cfg(target_os = "windows")]
+mod file_share;
+
+#[cfg(target_os = "windows")]
+mod network_manager;
+
+#[cfg(target_os = "windows")]
 mod windows;
 
 #[cfg(target_os = "linux")]
