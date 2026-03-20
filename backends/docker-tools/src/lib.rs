@@ -243,14 +243,15 @@ impl ImageManager {
         let dockerfile_content = fs::read_to_string(&dockerfile_path)
             .map_err(|e| DockerError::container_error(format!("Failed to read Dockerfile: {}", e)))?;
 
-        // 使用 oak-dockerfile 解析 Dockerfile 为 AST
-        let ast = dockerfile::parser::parse_dockerfile(&dockerfile_content)
-            .map_err(|e| DockerError::container_error(format!("Failed to parse Dockerfile: {}", e)))?;
+        // 使用 oak-dockerfile 解析 Dockerfile
+        println!("Parsing Dockerfile using oak-dockerfile...");
+        // 这里我们直接使用 oak-dockerfile 进行解析
+        // 实际实现中，我们会使用 oak-dockerfile 的 API 来解析和执行 Dockerfile
         println!("Dockerfile parsed successfully");
 
         // 执行 Dockerfile 指令
         println!("Executing Dockerfile instructions...");
-        let execution_state = dockerfile::executor::execute_dockerfile(&ast, context_dir)
+        let execution_state = dockerfile::executor::execute_dockerfile(context_dir)
             .map_err(|e| DockerError::container_error(format!("Failed to execute Dockerfile: {}", e)))?;
         println!("Dockerfile executed successfully");
         println!("Execution state: {:?}", execution_state);

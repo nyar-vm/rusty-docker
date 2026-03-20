@@ -5,7 +5,6 @@
 use docker_types::DockerError;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::collections::HashSet;
 use regex;
 
 /// Build context manager
@@ -26,8 +25,16 @@ impl BuildContext {
     /// # Returns
     /// * `Result<Self, DockerError>` - The build context or an error
     pub fn new(root: &Path) -> Result<Self, DockerError> {
-        if !root.exists() || !root.is_dir() {
-            return Err(DockerError::container_error(format!("Build context directory not found: {:?}", root)));
+        if !root.exists() {
+            return Err(DockerError::storage_read_failed(
+                format!("Build context directory does not exist: {:?}", root)
+            ));
+        }
+        
+        if !root.is_dir() {
+            return Err(DockerError::storage_read_failed(
+                format!("Build context path is not a directory: {:?}", root)
+            ));
         }
         
         let ignored_patterns = Self::read_dockerignore(root)?;
@@ -52,13 +59,23 @@ impl BuildContext {
         }
         
         let content = fs::read_to_string(&dockerignore_path)
-            .map_err(|e| DockerError::container_error(format!("Failed to read .dockerignore: {}", e)))?;
+            .map_err(|e| DockerError::storage_read_failed(
+                format!("Failed to read .dockerignore file: {}", e)
+            ))?;
         
         let mut patterns = Vec::new();
-        for line in content.lines() {
+        for (line_num, line) in content.lines().enumerate() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
+            }
+            
+            // Validate pattern format (basic validation)
+            if line.contains('\0') {
+                return Err(DockerError::invalid_params(
+                    ".dockerignore",
+                    format!("Invalid pattern at line {}: contains null character", line_num + 1)
+                ));
             }
             
             patterns.push(line.to_string());
@@ -105,8 +122,10 @@ impl BuildContext {
         // Simple glob pattern matching
         // This is a basic implementation, real Dockerfile .dockerignore uses more complex rules
         let pattern = pattern.replace("*", ".*");
-        let regex = regex::Regex::new(&format!("^{}$", pattern)).unwrap();
-        regex.is_match(path)
+        match regex::Regex::new(&format!("^{}$", pattern)) {
+            Ok(regex) => regex.is_match(path),
+            Err(_) => false, // Invalid regex pattern, treat as no match
+        }
     }
     
     /// Get the absolute path of a file in the build context
@@ -129,27 +148,50 @@ impl BuildContext {
     /// # Returns
     /// * `Result<(), DockerError>` - Copy result
     pub fn copy_file(&self, src: &str, dest: &Path) -> Result<(), DockerError> {
+        if src.is_empty() {
+            return Err(DockerError::invalid_params(
+                "COPY",
+                "Source path cannot be empty"
+            ));
+        }
+        
         let src_path = self.get_absolute_path(src);
         
         // Check if the source path is ignored
         if self.is_ignored(&src_path) {
-            return Err(DockerError::container_error(format!("Source path is ignored: {:?}", src)));
+            return Err(DockerError::invalid_params(
+                "COPY",
+                format!("Source path is ignored: {:?}", src)
+            ));
         }
         
         // Check if the source file exists
-        if !src_path.exists() || !src_path.is_file() {
-            return Err(DockerError::container_error(format!("Source file not found: {:?}", src)));
+        if !src_path.exists() {
+            return Err(DockerError::storage_read_failed(
+                format!("Source file does not exist: {:?}", src)
+            ));
+        }
+        
+        if !src_path.is_file() {
+            return Err(DockerError::invalid_params(
+                "COPY",
+                format!("Source path is not a file: {:?}", src)
+            ));
         }
         
         // Create the destination directory if it doesn't exist
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)
-                .map_err(|e| DockerError::container_error(format!("Failed to create destination directory: {}", e)))?;
+                .map_err(|e| DockerError::storage_write_failed(
+                    format!("Failed to create destination directory: {}", e)
+                ))?;
         }
         
         // Copy the file
         fs::copy(&src_path, dest)
-            .map_err(|e| DockerError::container_error(format!("Failed to copy file: {}", e)))?;
+            .map_err(|e| DockerError::storage_write_failed(
+                format!("Failed to copy file: {}", e)
+            ))?;
         
         Ok(())
     }
@@ -163,27 +205,52 @@ impl BuildContext {
     /// # Returns
     /// * `Result<(), DockerError>` - Copy result
     pub fn copy_directory(&self, src: &str, dest: &Path) -> Result<(), DockerError> {
+        if src.is_empty() {
+            return Err(DockerError::invalid_params(
+                "COPY",
+                "Source directory path cannot be empty"
+            ));
+        }
+        
         let src_path = self.get_absolute_path(src);
         
         // Check if the source path is ignored
         if self.is_ignored(&src_path) {
-            return Err(DockerError::container_error(format!("Source directory is ignored: {:?}", src)));
+            return Err(DockerError::invalid_params(
+                "COPY",
+                format!("Source directory is ignored: {:?}", src)
+            ));
         }
         
         // Check if the source directory exists
-        if !src_path.exists() || !src_path.is_dir() {
-            return Err(DockerError::container_error(format!("Source directory not found: {:?}", src)));
+        if !src_path.exists() {
+            return Err(DockerError::storage_read_failed(
+                format!("Source directory does not exist: {:?}", src)
+            ));
+        }
+        
+        if !src_path.is_dir() {
+            return Err(DockerError::invalid_params(
+                "COPY",
+                format!("Source path is not a directory: {:?}", src)
+            ));
         }
         
         // Create the destination directory if it doesn't exist
         fs::create_dir_all(dest)
-            .map_err(|e| DockerError::container_error(format!("Failed to create destination directory: {}", e)))?;
+            .map_err(|e| DockerError::storage_write_failed(
+                format!("Failed to create destination directory: {}", e)
+            ))?;
         
         // Copy all files in the directory
         for entry in fs::read_dir(&src_path)
-            .map_err(|e| DockerError::container_error(format!("Failed to read source directory: {}", e)))? {
+            .map_err(|e| DockerError::storage_read_failed(
+                format!("Failed to read source directory: {}", e)
+            ))? {
             let entry = entry
-                .map_err(|e| DockerError::container_error(format!("Failed to read directory entry: {}", e)))?;
+                .map_err(|e| DockerError::storage_read_failed(
+                    format!("Failed to read directory entry: {}", e)
+                ))?;
             let entry_path = entry.path();
             
             // Skip ignored paths
@@ -192,13 +259,16 @@ impl BuildContext {
             }
             
             let relative_path = entry_path.strip_prefix(&self.root)
-                .map_err(|e| DockerError::container_error(format!("Failed to get relative path: {}", e)))?;
+                .map_err(|e| DockerError::internal(
+                    format!("Failed to get relative path: {}", e)
+                ))?;
+            
             let dest_path = dest.join(relative_path);
             
             if entry_path.is_dir() {
-                self.copy_directory(relative_path.to_str().unwrap(), &dest_path)?;
+                self.copy_directory(relative_path.to_str().unwrap_or(""), &dest_path)?;
             } else {
-                self.copy_file(relative_path.to_str().unwrap(), &dest_path)?;
+                self.copy_file(relative_path.to_str().unwrap_or(""), &dest_path)?;
             }
         }
         
