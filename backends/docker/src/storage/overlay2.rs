@@ -15,6 +15,8 @@ use std::{
 };
 
 use docker_types::{DockerError, Result};
+
+#[cfg(target_os = "linux")]
 use nix::{
     mount::{MsFlags, mount},
     sys::stat::makedev,
@@ -82,6 +84,7 @@ impl Overlay2Driver {
     }
 
     /// 创建 overlay2 挂载
+    #[cfg(target_os = "linux")]
     pub fn mount_overlay(&self, container_id: &str, image_id: &str) -> Result<()> {
         let image_dir = self.get_image_dir(image_id);
         if !image_dir.exists() {
@@ -110,7 +113,14 @@ impl Overlay2Driver {
         Ok(())
     }
 
+    /// 创建 overlay2 挂载 (Windows 实现)
+    #[cfg(not(target_os = "linux"))]
+    pub fn mount_overlay(&self, _container_id: &str, _image_id: &str) -> Result<()> {
+        Ok(())
+    }
+
     /// 卸载 overlay2 挂载
+    #[cfg(target_os = "linux")]
     pub fn umount_overlay(&self, container_id: &str) -> Result<()> {
         let merged_dir = self.get_merged_dir(container_id);
         if merged_dir.exists() {
@@ -120,7 +130,14 @@ impl Overlay2Driver {
         Ok(())
     }
 
+    /// 卸载 overlay2 挂载 (Windows 实现)
+    #[cfg(not(target_os = "linux"))]
+    pub fn umount_overlay(&self, _container_id: &str) -> Result<()> {
+        Ok(())
+    }
+
     /// 准备容器根文件系统，挂载必要的文件系统
+    #[cfg(target_os = "linux")]
     pub fn prepare_container_rootfs(&self, container_id: &str) -> Result<()> {
         let merged_dir = self.get_merged_dir(container_id);
 
@@ -154,7 +171,14 @@ impl Overlay2Driver {
         Ok(())
     }
 
+    /// 准备容器根文件系统，挂载必要的文件系统 (Windows 实现)
+    #[cfg(not(target_os = "linux"))]
+    pub fn prepare_container_rootfs(&self, _container_id: &str) -> Result<()> {
+        Ok(())
+    }
+
     /// 创建必要的设备节点
+    #[cfg(target_os = "linux")]
     fn create_dev_nodes(&self, merged_dir: &Path) -> Result<()> {
         let dev_dir = merged_dir.join("dev");
 
@@ -191,7 +215,14 @@ impl Overlay2Driver {
         Ok(())
     }
 
+    /// 创建必要的设备节点 (Windows 实现)
+    #[cfg(not(target_os = "linux"))]
+    fn create_dev_nodes(&self, _merged_dir: &Path) -> Result<()> {
+        Ok(())
+    }
+
     /// 清理容器根文件系统，卸载挂载的文件系统
+    #[cfg(target_os = "linux")]
     pub fn cleanup_container_rootfs(&self, container_id: &str) -> Result<()> {
         let merged_dir = self.get_merged_dir(container_id);
 
@@ -204,6 +235,12 @@ impl Overlay2Driver {
             }
         }
 
+        Ok(())
+    }
+
+    /// 清理容器根文件系统，卸载挂载的文件系统 (Windows 实现)
+    #[cfg(not(target_os = "linux"))]
+    pub fn cleanup_container_rootfs(&self, _container_id: &str) -> Result<()> {
         Ok(())
     }
 

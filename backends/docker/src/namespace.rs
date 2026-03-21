@@ -7,9 +7,11 @@
 
 use std::{
     fs,
-    os::unix::io::RawFd,
     path::{Path, PathBuf},
 };
+
+#[cfg(target_os = "linux")]
+use std::os::unix::io::RawFd;
 
 use docker_types::{DockerError, Result};
 

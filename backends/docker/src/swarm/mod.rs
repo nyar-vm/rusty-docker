@@ -9,7 +9,7 @@
 //! - 服务编排和调度
 
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex, OnceLock, RwLock},
     time::{Duration, SystemTime},
 };
 use tokio::sync::broadcast;
@@ -894,18 +894,14 @@ impl SwarmManager {
 }
 
 /// 全局 Swarm 管理器实例
-pub static mut SWARM_MANAGER: Option<Arc<SwarmManager>> = None;
+pub static SWARM_MANAGER: OnceLock<Arc<SwarmManager>> = OnceLock::new();
 
 /// 初始化 Swarm 管理器
 pub fn init_swarm_manager() {
-    unsafe {
-        if SWARM_MANAGER.is_none() {
-            SWARM_MANAGER = Some(Arc::new(SwarmManager::new()));
-        }
-    }
+    SWARM_MANAGER.get_or_init(|| Arc::new(SwarmManager::new()));
 }
 
 /// 获取 Swarm 管理器
 pub fn get_swarm_manager() -> Arc<SwarmManager> {
-    unsafe { SWARM_MANAGER.as_ref().unwrap().clone() }
+    SWARM_MANAGER.get().unwrap().clone()
 }
