@@ -773,16 +773,16 @@ impl SwarmManager {
     /// 扩缩容 Swarm 服务
     pub async fn scale_service(&self, service_id: &str, replicas: u32) -> DockerResult<ServiceInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can scale services".to_string()));
+            return Err(DockerError::internal("Only managers can scale services"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -813,16 +813,16 @@ impl SwarmManager {
     /// 回滚 Swarm 服务到之前的版本
     pub async fn rollback_service(&self, service_id: &str) -> DockerResult<ServiceInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can rollback services".to_string()));
+            return Err(DockerError::internal("Only managers can rollback services"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -834,7 +834,7 @@ impl SwarmManager {
 
             // 检查是否有历史版本
             if service.history.is_empty() {
-                return Err(DockerError::swarm_error("No history available for rollback".to_string()));
+                return Err(DockerError::internal("No history available for rollback"));
             }
 
             // 获取上一个版本
@@ -884,12 +884,12 @@ impl SwarmManager {
 
     /// 检查是否在 Swarm 集群中
     pub async fn is_in_swarm(&self) -> bool {
-        *self.in_swarm.lock().await
+        *self.in_swarm.lock().unwrap()
     }
 
     /// 获取本地节点信息
     pub async fn get_local_node(&self) -> Option<NodeInfo> {
-        self.local_node.lock().await.clone()
+        self.local_node.lock().unwrap().clone()
     }
 }
 

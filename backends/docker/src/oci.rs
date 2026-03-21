@@ -319,12 +319,12 @@ impl OciRuntime {
 
     /// 停止容器
     pub fn stop(&self, container_id: &str, timeout: Option<u32>) -> Result<()> {
-        let mut args = vec!["stop"];
+        let mut args: Vec<String> = vec!["stop".to_string()];
         if let Some(timeout) = timeout {
-            let timeout_str = timeout.to_string();
-            args.extend(&["--timeout", &timeout_str]);
+            args.push("--timeout".to_string());
+            args.push(timeout.to_string());
         }
-        args.push(container_id);
+        args.push(container_id.to_string());
 
         let output = std::process::Command::new(&self.runtime_path)
             .args(&args)
