@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use docker_network::NetworkManager;
 use docker_types::DockerError;
-use rand::{Rng, thread_rng};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -719,8 +719,6 @@ pub struct ServiceDiscoveryManager {
     service_name_map: Arc<tokio::sync::RwLock<HashMap<String, String>>>, // 服务名称到服务 ID 的映射
     load_balancer: Arc<dyn LoadBalancer>,
     network_manager: Arc<dyn NetworkManager>,
-    service_cache: Arc<tokio::sync::RwLock<HashMap<String, (ServiceInfo, DateTime<Utc>)>>>, // 服务缓存，包含服务信息和过期时间
-    cache_ttl: u64,                                                                         // 缓存过期时间（秒）
 }
 
 impl ServiceDiscoveryManager {
@@ -731,8 +729,6 @@ impl ServiceDiscoveryManager {
             service_name_map: Arc::new(RwLock::new(HashMap::new())),
             load_balancer: Arc::new(RoundRobinLoadBalancer::new()),
             network_manager,
-            service_cache: Arc::new(RwLock::new(HashMap::new())),
-            cache_ttl: 60, // 默认缓存过期时间为 60 秒
         }
     }
 
@@ -862,11 +858,6 @@ impl ServiceDiscovery for ServiceDiscoveryManager {
     }
 
     async fn discover_service(&self, service_name: &str) -> Result<ServiceInfo> {
-        // 尝试从缓存中获取服务信息
-        if let Ok(service_info) = self.get_service_from_cache(service_name).await {
-            return Ok(service_info);
-        }
-
         // 从存储中获取服务信息
         let service_name_map = self.service_name_map.read().await;
 
@@ -874,8 +865,6 @@ impl ServiceDiscovery for ServiceDiscoveryManager {
             let services = self.services.read().await;
 
             if let Some(service_info) = services.get(service_id) {
-                // 将服务信息添加到缓存
-                self.add_service_to_cache(service_name, service_info).await;
                 Ok(service_info.clone())
             }
             else {
@@ -885,41 +874,6 @@ impl ServiceDiscovery for ServiceDiscoveryManager {
         else {
             Err(DockerError::not_found("service", service_name.to_string()))
         }
-    }
-
-    /// 从缓存中获取服务信息
-    async fn get_service_from_cache(&self, service_name: &str) -> Result<ServiceInfo> {
-        let mut service_cache = self.service_cache.write().await;
-
-        // 清理过期的缓存
-        Self::cleanup_expired_cache(&mut service_cache);
-
-        if let Some((service_info, expires_at)) = service_cache.get(service_name) {
-            if expires_at > &Utc::now() {
-                Ok(service_info.clone())
-            }
-            else {
-                // 缓存已过期，移除它
-                service_cache.remove(service_name);
-                Err(DockerError::not_found("service", service_name.to_string()))
-            }
-        }
-        else {
-            Err(DockerError::not_found("service", service_name.to_string()))
-        }
-    }
-
-    /// 将服务信息添加到缓存
-    async fn add_service_to_cache(&self, service_name: &str, service_info: &ServiceInfo) {
-        let mut service_cache = self.service_cache.write().await;
-        let expires_at = Utc::now() + chrono::Duration::seconds(self.cache_ttl as i64);
-        service_cache.insert(service_name.to_string(), (service_info.clone(), expires_at));
-    }
-
-    /// 清理过期的缓存
-    fn cleanup_expired_cache(service_cache: &mut HashMap<String, (ServiceInfo, DateTime<Utc>)>) {
-        let now = Utc::now();
-        service_cache.retain(|_, (_, expires_at)| *expires_at > now);
     }
 
     async fn list_services(&self) -> Result<Vec<ServiceInfo>> {

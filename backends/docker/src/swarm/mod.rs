@@ -184,7 +184,7 @@ impl SwarmManager {
         let local_node = NodeInfo {
             id: format!("node-{}", Uuid::new_v4()),
             name: hostname::get().unwrap_or_else(|_| "localhost".into()).to_string_lossy().to_string(),
-            role,
+            role: role.clone(),
             availability: NodeAvailability::Active,
             status: NodeStatus::Ready,
             address: advertise_addr.unwrap_or_else(|| "127.0.0.1:2377".to_string()),
