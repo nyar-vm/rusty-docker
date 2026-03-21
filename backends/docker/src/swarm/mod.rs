@@ -231,12 +231,12 @@ impl SwarmManager {
     /// 离开 Swarm 集群
     pub async fn leave(&self, force: bool) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let node_id = local_node.as_ref().map(|n| n.id.clone()).unwrap_or_default();
 
         // 检查是否是最后一个管理节点
