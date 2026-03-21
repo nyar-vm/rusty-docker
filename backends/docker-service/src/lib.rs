@@ -743,7 +743,6 @@ impl ServiceDiscoveryManager {
             LoadBalancingStrategy::Random => Arc::new(RandomLoadBalancer::new()),
             LoadBalancingStrategy::LeastConnections => Arc::new(LeastConnectionsLoadBalancer::new()),
             LoadBalancingStrategy::IpHash => Arc::new(IpHashLoadBalancer::new()),
-            _ => Arc::new(RoundRobinLoadBalancer::new()),
         }
     }
 
@@ -1104,7 +1103,7 @@ impl ServiceManager for ServiceManagerImpl {
 
     async fn service_to_service_call(
         &self,
-        source_service_id: &str,
+        _source_service_id: &str,
         target_service_name: &str,
         request: Vec<u8>,
     ) -> Result<Vec<u8>> {

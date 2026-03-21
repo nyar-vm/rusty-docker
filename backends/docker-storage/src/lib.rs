@@ -1,11 +1,69 @@
 #![warn(missing_docs)]
 
+#[cfg(unix)]
 pub mod overlay;
 
 use docker_types::DockerError;
-use overlay::{OverlayDriver, StorageDriver};
 use std::path::{Path, PathBuf};
 use tokio::fs;
+
+/// 存储驱动接口
+pub trait StorageDriver {
+    /// 创建层
+    fn create_layer(&self, layer_id: &str, parent_id: Option<&str>) -> StorageResult<()>;
+
+    /// 挂载层
+    fn mount_layer(&self, layer_id: &str, mount_point: &Path) -> StorageResult<()>;
+
+    /// 卸载层
+    fn unmount_layer(&self, mount_point: &Path) -> StorageResult<()>;
+
+    /// 删除层
+    fn delete_layer(&self, layer_id: &str) -> StorageResult<()>;
+
+    /// 获取层路径
+    fn get_layer_path(&self, layer_id: &str) -> String;
+}
+
+/// 虚拟存储驱动（用于不支持的平台）
+pub struct DummyStorageDriver {
+    base_path: String,
+}
+
+impl DummyStorageDriver {
+    pub fn new(base_path: &str) -> StorageResult<Self> {
+        Ok(Self { base_path: base_path.to_string() })
+    }
+
+    pub fn default() -> StorageResult<Self> {
+        Self::new("/var/lib/rusty-docker/overlay")
+    }
+}
+
+impl StorageDriver for DummyStorageDriver {
+    fn create_layer(&self, layer_id: &str, parent_id: Option<&str>) -> StorageResult<()> {
+        Ok(())
+    }
+
+    fn mount_layer(&self, layer_id: &str, mount_point: &Path) -> StorageResult<()> {
+        Ok(())
+    }
+
+    fn unmount_layer(&self, mount_point: &Path) -> StorageResult<()> {
+        Ok(())
+    }
+
+    fn delete_layer(&self, layer_id: &str) -> StorageResult<()> {
+        Ok(())
+    }
+
+    fn get_layer_path(&self, layer_id: &str) -> String {
+        format!("{}/{}", self.base_path, layer_id)
+    }
+}
+
+#[cfg(unix)]
+use overlay::OverlayDriver;
 
 /// 结果类型
 pub type StorageResult<T> = std::result::Result<T, DockerError>;
@@ -18,7 +76,17 @@ pub struct StorageManager {
 impl StorageManager {
     pub fn new() -> StorageResult<Self> {
         let base_path = Self::get_base_path()?;
-        let storage_driver = Box::new(OverlayDriver::default()?);
+        let storage_driver: Box<dyn StorageDriver> = {
+            #[cfg(unix)]
+            {
+                Box::new(OverlayDriver::default()?)
+            }
+            
+            #[cfg(not(unix))]
+            {
+                Box::new(DummyStorageDriver::default()?)
+            }
+        };
         Ok(Self { base_path, storage_driver })
     }
 
