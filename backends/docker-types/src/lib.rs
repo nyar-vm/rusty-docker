@@ -13,10 +13,6 @@ use std::{collections::HashMap, time::SystemTime};
 /// 错误类型
 pub use crate::errors::*;
 
-/// 向后兼容：RustyDockerError 类型别名
-#[deprecated(note = "请使用 DockerError 替代")]
-pub type RustyDockerError = DockerError;
-
 /// 结果类型别名
 pub type Result<T> = std::result::Result<T, DockerError>;
 
