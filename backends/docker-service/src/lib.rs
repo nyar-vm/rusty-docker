@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use docker_network::NetworkManager;
 use docker_types::DockerError;
-use rand::thread_rng;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -447,8 +447,7 @@ impl LoadBalancer for RandomLoadBalancer {
             }
 
             // 随机选择实例
-            let mut rng = thread_rng();
-            let index = rng.gen_range(0..healthy_instances.len());
+            let index = rand::random::<usize>() % healthy_instances.len();
             let selected_instance = healthy_instances[index].clone();
 
             Ok(selected_instance)
@@ -662,8 +661,7 @@ impl LoadBalancer for IpHashLoadBalancer {
             }
             else {
                 // 如果没有客户端 IP，使用随机选择
-                let mut rng = thread_rng();
-                rng.gen_range(0..healthy_instances.len())
+                rand::random::<usize>() % healthy_instances.len()
             };
 
             let selected_instance = healthy_instances[index].clone();
