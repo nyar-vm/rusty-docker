@@ -245,23 +245,24 @@ impl ContainerRuntime {
             // 4. 准备 OCI 配置
             let rootfs_path = format!("{}/rootfs", self.storage.get_container_path(container_id));
             let oci_config = container_config_to_oci(&container.config, &rootfs_path);
-            
+
             // 创建 bundle 目录
             let bundle_path = format!("{}/bundle", self.storage.get_container_path(container_id));
             std::fs::create_dir_all(&bundle_path).map_err(|e| DockerError::io_error("create_bundle_dir", e.to_string()))?;
-            
+
             // 保存 OCI 配置文件
             let config_path = format!("{}/config.json", bundle_path);
             self.oci_runtime.save_config(&oci_config, &config_path)?;
-            
+
             // 5. 使用 OCI 运行时创建和启动容器
             self.oci_runtime.create(container_id, &config_path, &bundle_path)?;
             self.oci_runtime.start(container_id)?;
-            
+
             // 6. 获取容器状态
             let state_output = self.oci_runtime.state(container_id)?;
-            let state: serde_json::Value = serde_json::from_str(&state_output).map_err(|e| DockerError::json_error(e.to_string()))?;
-            
+            let state: serde_json::Value =
+                serde_json::from_str(&state_output).map_err(|e| DockerError::json_error(e.to_string()))?;
+
             // 提取 PID
             let pid = state["pid"].as_u64().unwrap_or(0) as u32;
 
@@ -313,7 +314,7 @@ impl ContainerRuntime {
 
             // 1. 使用 OCI 运行时停止容器
             self.oci_runtime.stop(container_id, Some(10))?;
-            
+
             // 2. 使用 OCI 运行时删除容器
             self.oci_runtime.delete(container_id)?;
 

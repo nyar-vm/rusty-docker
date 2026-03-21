@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
 
 use crate::{DockerError, Result};
 use serde_yaml;
@@ -106,7 +103,8 @@ fn merge_yaml(a: serde_yaml::Value, b: serde_yaml::Value) -> serde_yaml::Value {
             for (k, v) in b_map {
                 if let Some(existing) = a_map.get(&k) {
                     a_map.insert(k, merge_yaml(existing.clone(), v));
-                } else {
+                }
+                else {
                     a_map.insert(k, v);
                 }
             }
@@ -175,7 +173,8 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
                     service.environment.push(env_str.to_string());
                 }
             }
-        } else if let Some(env_map) = env.as_mapping() {
+        }
+        else if let Some(env_map) = env.as_mapping() {
             let mut env_map_hash = HashMap::new();
             for (k, v) in env_map {
                 if let (Some(key), Some(val)) = (k.as_str(), v.as_str()) {
@@ -196,7 +195,8 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
                 }
             }
             service.env_file = Some(env_files);
-        } else if let Some(file_str) = env_file.as_str() {
+        }
+        else if let Some(file_str) = env_file.as_str() {
             service.env_file = Some(vec![file_str.to_string()]);
         }
     }
@@ -211,11 +211,7 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
                     let source = parts[0].to_string();
                     let target = parts[1].to_string();
                     let read_only = parts.len() >= 3 && parts[2] == "ro";
-                    let mount_type = if source.starts_with("/") {
-                        "bind"
-                    } else {
-                        "volume"
-                    };
+                    let mount_type = if source.starts_with("/") { "bind" } else { "volume" };
 
                     service.volumes.push(MountConfig {
                         source,
@@ -258,13 +254,8 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
 
     // 解析健康检查
     if let Some(healthcheck) = value.get("healthcheck") {
-        let mut healthcheck_config = HealthCheckConfig {
-            test: Vec::new(),
-            interval: None,
-            timeout: None,
-            retries: None,
-            start_period: None,
-        };
+        let mut healthcheck_config =
+            HealthCheckConfig { test: Vec::new(), interval: None, timeout: None, retries: None, start_period: None };
 
         if let Some(test) = healthcheck.get("test").and_then(|v| v.as_sequence()) {
             for test_cmd in test {
@@ -295,24 +286,15 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
 
     // 解析部署配置
     if let Some(deploy) = value.get("deploy") {
-        let mut deploy_config = DeployConfig {
-            replicas: None,
-            restart_policy: None,
-            resources: None,
-            labels: None,
-        };
+        let mut deploy_config = DeployConfig { replicas: None, restart_policy: None, resources: None, labels: None };
 
         if let Some(replicas) = deploy.get("replicas").and_then(|v| v.as_u64()) {
             deploy_config.replicas = Some(replicas as u32);
         }
 
         if let Some(restart_policy) = deploy.get("restart_policy") {
-            let mut restart_policy_config = RestartPolicyConfig {
-                condition: None,
-                delay: None,
-                max_attempts: None,
-                window: None,
-            };
+            let mut restart_policy_config =
+                RestartPolicyConfig { condition: None, delay: None, max_attempts: None, window: None };
 
             if let Some(condition) = restart_policy.get("condition").and_then(|v| v.as_str()) {
                 restart_policy_config.condition = Some(condition.to_string());
@@ -334,16 +316,10 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
         }
 
         if let Some(resources) = deploy.get("resources") {
-            let mut resources_config = ResourcesConfig {
-                limits: None,
-                reservations: None,
-            };
+            let mut resources_config = ResourcesConfig { limits: None, reservations: None };
 
             if let Some(limits) = resources.get("limits") {
-                let mut limits_config = ResourceLimits {
-                    cpus: None,
-                    memory: None,
-                };
+                let mut limits_config = ResourceLimits { cpus: None, memory: None };
 
                 if let Some(cpus) = limits.get("cpus").and_then(|v| v.as_str()) {
                     limits_config.cpus = Some(cpus.to_string());
@@ -357,10 +333,7 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
             }
 
             if let Some(reservations) = resources.get("reservations") {
-                let mut reservations_config = ResourceReservations {
-                    cpus: None,
-                    memory: None,
-                };
+                let mut reservations_config = ResourceReservations { cpus: None, memory: None };
 
                 if let Some(cpus) = reservations.get("cpus").and_then(|v| v.as_str()) {
                     reservations_config.cpus = Some(cpus.to_string());
@@ -409,11 +382,8 @@ pub fn parse_service(name: &str, value: &serde_yaml::Value) -> Result<ComposeSer
     if let Some(networks) = value.get("networks").and_then(|v| v.as_mapping()) {
         for (network_name, network_config) in networks {
             if let Some(network_name_str) = network_name.as_str() {
-                let mut network_service_config = NetworkServiceConfig {
-                    aliases: Vec::new(),
-                    ipv4_address: None,
-                    ipv6_address: None,
-                };
+                let mut network_service_config =
+                    NetworkServiceConfig { aliases: Vec::new(), ipv4_address: None, ipv6_address: None };
 
                 if let Some(config_map) = network_config.as_mapping() {
                     if let Some(aliases) = config_map.get("aliases").and_then(|v| v.as_sequence()) {
@@ -484,10 +454,7 @@ pub fn parse_networks(config: &serde_yaml::Value) -> Vec<NetworkConfig> {
                 }
 
                 if let Some(ipam) = network_value.get("ipam") {
-                    let mut ipam_config = IpamConfig {
-                        driver: "default".to_string(),
-                        config: Vec::new(),
-                    };
+                    let mut ipam_config = IpamConfig { driver: "default".to_string(), config: Vec::new() };
 
                     if let Some(driver) = ipam.get("driver").and_then(|v| v.as_str()) {
                         ipam_config.driver = driver.to_string();
@@ -496,11 +463,8 @@ pub fn parse_networks(config: &serde_yaml::Value) -> Vec<NetworkConfig> {
                     if let Some(configs) = ipam.get("config").and_then(|v| v.as_sequence()) {
                         for config in configs {
                             if let Some(config_map) = config.as_mapping() {
-                                let mut subnet_config = IpamSubnetConfig {
-                                    subnet: "".to_string(),
-                                    gateway: None,
-                                    ip_range: None,
-                                };
+                                let mut subnet_config =
+                                    IpamSubnetConfig { subnet: "".to_string(), gateway: None, ip_range: None };
 
                                 if let Some(subnet) = config_map.get("subnet").and_then(|v| v.as_str()) {
                                     subnet_config.subnet = subnet.to_string();

@@ -4,8 +4,8 @@
 //!
 //! 包含 Docker 相关的所有数据结构定义，供其他组件使用。
 
-pub mod errors;
 pub mod compose;
+pub mod errors;
 
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::SystemTime};

@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! OCI 运行时规范兼容
-//! 
+//!
 //! 实现 OCI (Open Container Initiative) 运行时规范兼容，包括配置文件解析、
 //! 生命周期管理等功能。
 
@@ -258,9 +258,7 @@ pub struct OciRuntime {
 impl OciRuntime {
     /// 创建新的 OCI 运行时
     pub fn new(runtime_path: &str) -> Self {
-        Self {
-            runtime_path: runtime_path.to_string(),
-        }
+        Self { runtime_path: runtime_path.to_string() }
     }
 
     /// 从默认路径创建 OCI 运行时
@@ -271,11 +269,9 @@ impl OciRuntime {
     /// 加载 OCI 配置文件
     pub fn load_config<P: AsRef<Path>>(&self, path: P) -> Result<OciConfig> {
         let path = path.as_ref();
-        let content = fs::read_to_string(path)
-            .map_err(|e| DockerError::io_error("read_oci_config", e.to_string()))?;
+        let content = fs::read_to_string(path).map_err(|e| DockerError::io_error("read_oci_config", e.to_string()))?;
 
-        let config: OciConfig = serde_json::from_str(&content)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let config: OciConfig = serde_json::from_str(&content).map_err(|e| DockerError::json_error(e.to_string()))?;
 
         Ok(config)
     }
@@ -283,11 +279,9 @@ impl OciRuntime {
     /// 保存 OCI 配置文件
     pub fn save_config<P: AsRef<Path>>(&self, config: &OciConfig, path: P) -> Result<()> {
         let path = path.as_ref();
-        let content = serde_json::to_string_pretty(config)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let content = serde_json::to_string_pretty(config).map_err(|e| DockerError::json_error(e.to_string()))?;
 
-        fs::write(path, content)
-            .map_err(|e| DockerError::io_error("write_oci_config", e.to_string()))?;
+        fs::write(path, content).map_err(|e| DockerError::io_error("write_oci_config", e.to_string()))?;
 
         Ok(())
     }
@@ -378,10 +372,7 @@ impl OciRuntime {
 /// 从容器配置转换为 OCI 配置
 pub fn container_config_to_oci(container_config: &docker_types::ContainerConfig, rootfs_path: &str) -> OciConfig {
     // 构建环境变量
-    let env: Vec<String> = container_config.environment
-        .iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect();
+    let env: Vec<String> = container_config.environment.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
 
     // 构建挂载点
     let mut mounts = vec![
@@ -422,41 +413,22 @@ pub fn container_config_to_oci(container_config: &docker_types::ContainerConfig,
         let mut options = vec![];
         if volume.read_only {
             options.push("ro".to_string());
-        } else {
+        }
+        else {
             options.push("rw".to_string());
         }
 
-        mounts.push(MountConfig {
-            source,
-            destination: volume.container_path.clone(),
-            type_: mount_type.to_string(),
-            options,
-        });
+        mounts.push(MountConfig { source, destination: volume.container_path.clone(), type_: mount_type.to_string(), options });
     }
 
     // 构建 Linux 配置
     let linux = Some(LinuxConfig {
         namespaces: Some(vec![
-            NamespaceConfig {
-                type_: "pid".to_string(),
-                path: None,
-            },
-            NamespaceConfig {
-                type_: "network".to_string(),
-                path: None,
-            },
-            NamespaceConfig {
-                type_: "mount".to_string(),
-                path: None,
-            },
-            NamespaceConfig {
-                type_: "uts".to_string(),
-                path: None,
-            },
-            NamespaceConfig {
-                type_: "ipc".to_string(),
-                path: None,
-            },
+            NamespaceConfig { type_: "pid".to_string(), path: None },
+            NamespaceConfig { type_: "network".to_string(), path: None },
+            NamespaceConfig { type_: "mount".to_string(), path: None },
+            NamespaceConfig { type_: "uts".to_string(), path: None },
+            NamespaceConfig { type_: "ipc".to_string(), path: None },
         ]),
         devices: Some(vec![
             DeviceConfig {
@@ -517,9 +489,7 @@ pub fn container_config_to_oci(container_config: &docker_types::ContainerConfig,
                 disable_oom_killer: None,
             }),
             block_io: None,
-            pids: Some(PidsConfig {
-                limit: 4096,
-            }),
+            pids: Some(PidsConfig { limit: 4096 }),
         }),
     });
 
@@ -530,17 +500,10 @@ pub fn container_config_to_oci(container_config: &docker_types::ContainerConfig,
             env,
             cwd: "/".to_string(),
             terminal: false,
-            user: UserConfig {
-                uid: 0,
-                gid: 0,
-                additional_gids: Some(vec![]),
-            },
+            user: UserConfig { uid: 0, gid: 0, additional_gids: Some(vec![]) },
             rlimits: None,
         },
-        root: RootConfig {
-            path: rootfs_path.to_string(),
-            readonly: false,
-        },
+        root: RootConfig { path: rootfs_path.to_string(), readonly: false },
         mounts,
         hooks: None,
         linux,
@@ -561,12 +524,7 @@ mod tests {
             environment: std::collections::HashMap::new(),
             ports: std::collections::HashMap::new(),
             volumes: vec![],
-            resources: docker_types::ResourceLimits {
-                cpu_limit: 1.0,
-                memory_limit: 512,
-                storage_limit: 10,
-                network_limit: 10,
-            },
+            resources: docker_types::ResourceLimits { cpu_limit: 1.0, memory_limit: 512, storage_limit: 10, network_limit: 10 },
             network: docker_types::NetworkConfig {
                 network_name: "default".to_string(),
                 static_ip: None,

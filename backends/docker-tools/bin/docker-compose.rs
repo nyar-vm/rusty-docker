@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use docker::Docker;
-use docker_types::compose;
-use docker_types::{DockerError, Result};
+use docker_types::{DockerError, Result, compose};
 use retry::{delay::Exponential, retry};
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tokio::sync::Mutex;
@@ -360,25 +359,28 @@ enum StackCommands {
 }
 
 /// 加载并解析 Compose 文件
-fn load_compose_file(paths: &[String]) -> Result<(Vec<compose::compose::ComposeService>, Vec<compose::compose::NetworkConfig>, Vec<compose::compose::VolumeConfig>)> {
+fn load_compose_file(
+    paths: &[String],
+) -> Result<(Vec<compose::compose::ComposeService>, Vec<compose::compose::NetworkConfig>, Vec<compose::compose::VolumeConfig>)>
+{
     // 合并多个 Compose 文件
     let merged_config = compose::merge_compose_files(paths)?;
-    
+
     // 验证配置
     compose::validate_compose_config(&merged_config)?;
-    
+
     // 解析服务
     let services = compose::parse_services(&merged_config)?;
-    
+
     // 解析网络
     let networks = compose::parse_networks(&merged_config);
-    
+
     // 解析卷
     let volumes = compose::parse_volumes(&merged_config);
-    
+
     // 检查 Compose 文件版本
     info!("Compose file version: 3");
-    
+
     Ok((services, networks, volumes))
 }
 

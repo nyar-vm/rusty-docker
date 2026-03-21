@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! Docker 镜像格式
-//! 
+//!
 //! 实现 Docker 镜像格式的解析和管理，包括镜像清单、配置和分层存储。
 
 use std::{collections::HashMap, fs, path::Path};
@@ -161,15 +161,13 @@ impl ImageStore {
     /// 创建新的镜像存储
     pub fn new(store_path: &str) -> Result<Self> {
         // 创建存储目录
-        fs::create_dir_all(store_path)
-            .map_err(|e| DockerError::io_error("create_image_store", e.to_string()))?;
+        fs::create_dir_all(store_path).map_err(|e| DockerError::io_error("create_image_store", e.to_string()))?;
 
         // 创建子目录
         let subdirs = ["blobs", "manifests", "layers"];
         for subdir in &subdirs {
             let dir_path = format!("{}/{}", store_path, subdir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| DockerError::io_error("create_subdir", e.to_string()))?;
+            fs::create_dir_all(&dir_path).map_err(|e| DockerError::io_error("create_subdir", e.to_string()))?;
         }
 
         Ok(Self { store_path: store_path.to_string() })
@@ -183,11 +181,9 @@ impl ImageStore {
     /// 保存镜像清单
     pub fn save_manifest(&self, image_id: &str, manifest: &ImageManifest) -> Result<()> {
         let manifest_path = format!("{}/manifests/{}.json", self.store_path, image_id);
-        let content = serde_json::to_string_pretty(manifest)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let content = serde_json::to_string_pretty(manifest).map_err(|e| DockerError::json_error(e.to_string()))?;
 
-        fs::write(&manifest_path, content)
-            .map_err(|e| DockerError::io_error("save_manifest", e.to_string()))?;
+        fs::write(&manifest_path, content).map_err(|e| DockerError::io_error("save_manifest", e.to_string()))?;
 
         Ok(())
     }
@@ -195,11 +191,9 @@ impl ImageStore {
     /// 加载镜像清单
     pub fn load_manifest(&self, image_id: &str) -> Result<ImageManifest> {
         let manifest_path = format!("{}/manifests/{}.json", self.store_path, image_id);
-        let content = fs::read_to_string(&manifest_path)
-            .map_err(|e| DockerError::io_error("load_manifest", e.to_string()))?;
+        let content = fs::read_to_string(&manifest_path).map_err(|e| DockerError::io_error("load_manifest", e.to_string()))?;
 
-        let manifest: ImageManifest = serde_json::from_str(&content)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let manifest: ImageManifest = serde_json::from_str(&content).map_err(|e| DockerError::json_error(e.to_string()))?;
 
         Ok(manifest)
     }
@@ -207,11 +201,9 @@ impl ImageStore {
     /// 保存镜像配置
     pub fn save_config(&self, config_id: &str, config: &ImageConfig) -> Result<()> {
         let config_path = format!("{}/blobs/{}.json", self.store_path, config_id);
-        let content = serde_json::to_string_pretty(config)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let content = serde_json::to_string_pretty(config).map_err(|e| DockerError::json_error(e.to_string()))?;
 
-        fs::write(&config_path, content)
-            .map_err(|e| DockerError::io_error("save_config", e.to_string()))?;
+        fs::write(&config_path, content).map_err(|e| DockerError::io_error("save_config", e.to_string()))?;
 
         Ok(())
     }
@@ -219,11 +211,9 @@ impl ImageStore {
     /// 加载镜像配置
     pub fn load_config(&self, config_id: &str) -> Result<ImageConfig> {
         let config_path = format!("{}/blobs/{}.json", self.store_path, config_id);
-        let content = fs::read_to_string(&config_path)
-            .map_err(|e| DockerError::io_error("load_config", e.to_string()))?;
+        let content = fs::read_to_string(&config_path).map_err(|e| DockerError::io_error("load_config", e.to_string()))?;
 
-        let config: ImageConfig = serde_json::from_str(&content)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let config: ImageConfig = serde_json::from_str(&content).map_err(|e| DockerError::json_error(e.to_string()))?;
 
         Ok(config)
     }
@@ -231,8 +221,7 @@ impl ImageStore {
     /// 保存镜像层
     pub fn save_layer(&self, layer_id: &str, layer_data: &[u8]) -> Result<()> {
         let layer_path = format!("{}/layers/{}", self.store_path, layer_id);
-        fs::write(&layer_path, layer_data)
-            .map_err(|e| DockerError::io_error("save_layer", e.to_string()))?;
+        fs::write(&layer_path, layer_data).map_err(|e| DockerError::io_error("save_layer", e.to_string()))?;
 
         Ok(())
     }
@@ -240,8 +229,7 @@ impl ImageStore {
     /// 加载镜像层
     pub fn load_layer(&self, layer_id: &str) -> Result<Vec<u8>> {
         let layer_path = format!("{}/layers/{}", self.store_path, layer_id);
-        let data = fs::read(&layer_path)
-            .map_err(|e| DockerError::io_error("load_layer", e.to_string()))?;
+        let data = fs::read(&layer_path).map_err(|e| DockerError::io_error("load_layer", e.to_string()))?;
 
         Ok(data)
     }
@@ -249,8 +237,7 @@ impl ImageStore {
     /// 列出所有镜像
     pub fn list_images(&self) -> Result<Vec<String>> {
         let manifests_dir = format!("{}/manifests", self.store_path);
-        let entries = fs::read_dir(&manifests_dir)
-            .map_err(|e| DockerError::io_error("list_manifests", e.to_string()))?;
+        let entries = fs::read_dir(&manifests_dir).map_err(|e| DockerError::io_error("list_manifests", e.to_string()))?;
 
         let mut image_ids = Vec::new();
         for entry in entries {
@@ -272,8 +259,7 @@ impl ImageStore {
         // 删除清单
         let manifest_path = format!("{}/manifests/{}.json", self.store_path, image_id);
         if Path::new(&manifest_path).exists() {
-            fs::remove_file(&manifest_path)
-                .map_err(|e| DockerError::io_error("delete_manifest", e.to_string()))?;
+            fs::remove_file(&manifest_path).map_err(|e| DockerError::io_error("delete_manifest", e.to_string()))?;
         }
 
         // 删除相关的配置和层（这里简化处理）
@@ -287,7 +273,7 @@ impl ImageStore {
 pub fn parse_image_reference(ref_str: &str) -> Result<(String, String, String)> {
     // 解析镜像引用格式：[registry/][repository][:tag]
     let parts: Vec<&str> = ref_str.split('/').collect();
-    
+
     let mut registry = "docker.io".to_string();
     let mut repository = "".to_string();
     let mut tag = "latest".to_string();
@@ -298,10 +284,12 @@ pub fn parse_image_reference(ref_str: &str) -> Result<(String, String, String)> 
         if first_part.contains('.') || first_part.contains(':') {
             registry = first_part.to_string();
             repository = parts[1..].join("/");
-        } else {
+        }
+        else {
             repository = ref_str.to_string();
         }
-    } else {
+    }
+    else {
         repository = ref_str.to_string();
     }
 
@@ -317,7 +305,7 @@ pub fn parse_image_reference(ref_str: &str) -> Result<(String, String, String)> 
 /// 计算内容哈希
 pub fn calculate_digest(data: &[u8]) -> String {
     use sha2::{Digest, Sha256};
-    
+
     let mut hasher = Sha256::new();
     hasher.update(data);
     let result = hasher.finalize();

@@ -1,11 +1,13 @@
 //! Dockerfile build context management module
-//! 
+//!
 //! This module provides functionality to manage the build context for Dockerfile execution.
 
 use docker_types::DockerError;
-use std::fs;
-use std::path::{Path, PathBuf};
 use regex;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 /// Build context manager
 #[derive(Debug)]
@@ -26,25 +28,18 @@ impl BuildContext {
     /// * `Result<Self, DockerError>` - The build context or an error
     pub fn new(root: &Path) -> Result<Self, DockerError> {
         if !root.exists() {
-            return Err(DockerError::storage_read_failed(
-                format!("Build context directory does not exist: {:?}", root)
-            ));
+            return Err(DockerError::storage_read_failed(format!("Build context directory does not exist: {:?}", root)));
         }
-        
+
         if !root.is_dir() {
-            return Err(DockerError::storage_read_failed(
-                format!("Build context path is not a directory: {:?}", root)
-            ));
+            return Err(DockerError::storage_read_failed(format!("Build context path is not a directory: {:?}", root)));
         }
-        
+
         let ignored_patterns = Self::read_dockerignore(root)?;
-        
-        Ok(Self {
-            root: root.to_path_buf(),
-            ignored_patterns,
-        })
+
+        Ok(Self { root: root.to_path_buf(), ignored_patterns })
     }
-    
+
     /// Read .dockerignore file and return ignored patterns
     ///
     /// # Parameters
@@ -57,33 +52,31 @@ impl BuildContext {
         if !dockerignore_path.exists() {
             return Ok(Vec::new());
         }
-        
+
         let content = fs::read_to_string(&dockerignore_path)
-            .map_err(|e| DockerError::storage_read_failed(
-                format!("Failed to read .dockerignore file: {}", e)
-            ))?;
-        
+            .map_err(|e| DockerError::storage_read_failed(format!("Failed to read .dockerignore file: {}", e)))?;
+
         let mut patterns = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            
+
             // Validate pattern format (basic validation)
             if line.contains('\0') {
                 return Err(DockerError::invalid_params(
                     ".dockerignore",
-                    format!("Invalid pattern at line {}: contains null character", line_num + 1)
+                    format!("Invalid pattern at line {}: contains null character", line_num + 1),
                 ));
             }
-            
+
             patterns.push(line.to_string());
         }
-        
+
         Ok(patterns)
     }
-    
+
     /// Check if a path is ignored
     ///
     /// # Parameters
@@ -97,19 +90,19 @@ impl BuildContext {
             Ok(path) => path,
             Err(_) => return false, // Path is outside the build context, not ignored
         };
-        
+
         let relative_path_str = relative_path.to_string_lossy();
-        
+
         // Check if the path matches any ignored pattern
         for pattern in &self.ignored_patterns {
             if self.matches_pattern(&relative_path_str, pattern) {
                 return true;
             }
         }
-        
+
         false
     }
-    
+
     /// Check if a path matches a pattern
     ///
     /// # Parameters
@@ -127,7 +120,7 @@ impl BuildContext {
             Err(_) => false, // Invalid regex pattern, treat as no match
         }
     }
-    
+
     /// Get the absolute path of a file in the build context
     ///
     /// # Parameters
@@ -138,7 +131,7 @@ impl BuildContext {
     pub fn get_absolute_path(&self, path: &str) -> PathBuf {
         self.root.join(path)
     }
-    
+
     /// Copy a file from the build context to a destination
     ///
     /// # Parameters
@@ -149,53 +142,37 @@ impl BuildContext {
     /// * `Result<(), DockerError>` - Copy result
     pub fn copy_file(&self, src: &str, dest: &Path) -> Result<(), DockerError> {
         if src.is_empty() {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                "Source path cannot be empty"
-            ));
+            return Err(DockerError::invalid_params("COPY", "Source path cannot be empty"));
         }
-        
+
         let src_path = self.get_absolute_path(src);
-        
+
         // Check if the source path is ignored
         if self.is_ignored(&src_path) {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                format!("Source path is ignored: {:?}", src)
-            ));
+            return Err(DockerError::invalid_params("COPY", format!("Source path is ignored: {:?}", src)));
         }
-        
+
         // Check if the source file exists
         if !src_path.exists() {
-            return Err(DockerError::storage_read_failed(
-                format!("Source file does not exist: {:?}", src)
-            ));
+            return Err(DockerError::storage_read_failed(format!("Source file does not exist: {:?}", src)));
         }
-        
+
         if !src_path.is_file() {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                format!("Source path is not a file: {:?}", src)
-            ));
+            return Err(DockerError::invalid_params("COPY", format!("Source path is not a file: {:?}", src)));
         }
-        
+
         // Create the destination directory if it doesn't exist
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)
-                .map_err(|e| DockerError::storage_write_failed(
-                    format!("Failed to create destination directory: {}", e)
-                ))?;
+                .map_err(|e| DockerError::storage_write_failed(format!("Failed to create destination directory: {}", e)))?;
         }
-        
+
         // Copy the file
-        fs::copy(&src_path, dest)
-            .map_err(|e| DockerError::storage_write_failed(
-                format!("Failed to copy file: {}", e)
-            ))?;
-        
+        fs::copy(&src_path, dest).map_err(|e| DockerError::storage_write_failed(format!("Failed to copy file: {}", e)))?;
+
         Ok(())
     }
-    
+
     /// Copy a directory from the build context to a destination
     ///
     /// # Parameters
@@ -206,72 +183,56 @@ impl BuildContext {
     /// * `Result<(), DockerError>` - Copy result
     pub fn copy_directory(&self, src: &str, dest: &Path) -> Result<(), DockerError> {
         if src.is_empty() {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                "Source directory path cannot be empty"
-            ));
+            return Err(DockerError::invalid_params("COPY", "Source directory path cannot be empty"));
         }
-        
+
         let src_path = self.get_absolute_path(src);
-        
+
         // Check if the source path is ignored
         if self.is_ignored(&src_path) {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                format!("Source directory is ignored: {:?}", src)
-            ));
+            return Err(DockerError::invalid_params("COPY", format!("Source directory is ignored: {:?}", src)));
         }
-        
+
         // Check if the source directory exists
         if !src_path.exists() {
-            return Err(DockerError::storage_read_failed(
-                format!("Source directory does not exist: {:?}", src)
-            ));
+            return Err(DockerError::storage_read_failed(format!("Source directory does not exist: {:?}", src)));
         }
-        
+
         if !src_path.is_dir() {
-            return Err(DockerError::invalid_params(
-                "COPY",
-                format!("Source path is not a directory: {:?}", src)
-            ));
+            return Err(DockerError::invalid_params("COPY", format!("Source path is not a directory: {:?}", src)));
         }
-        
+
         // Create the destination directory if it doesn't exist
         fs::create_dir_all(dest)
-            .map_err(|e| DockerError::storage_write_failed(
-                format!("Failed to create destination directory: {}", e)
-            ))?;
-        
+            .map_err(|e| DockerError::storage_write_failed(format!("Failed to create destination directory: {}", e)))?;
+
         // Copy all files in the directory
         for entry in fs::read_dir(&src_path)
-            .map_err(|e| DockerError::storage_read_failed(
-                format!("Failed to read source directory: {}", e)
-            ))? {
-            let entry = entry
-                .map_err(|e| DockerError::storage_read_failed(
-                    format!("Failed to read directory entry: {}", e)
-                ))?;
+            .map_err(|e| DockerError::storage_read_failed(format!("Failed to read source directory: {}", e)))?
+        {
+            let entry =
+                entry.map_err(|e| DockerError::storage_read_failed(format!("Failed to read directory entry: {}", e)))?;
             let entry_path = entry.path();
-            
+
             // Skip ignored paths
             if self.is_ignored(&entry_path) {
                 continue;
             }
-            
-            let relative_path = entry_path.strip_prefix(&self.root)
-                .map_err(|e| DockerError::internal(
-                    format!("Failed to get relative path: {}", e)
-                ))?;
-            
+
+            let relative_path = entry_path
+                .strip_prefix(&self.root)
+                .map_err(|e| DockerError::internal(format!("Failed to get relative path: {}", e)))?;
+
             let dest_path = dest.join(relative_path);
-            
+
             if entry_path.is_dir() {
                 self.copy_directory(relative_path.to_str().unwrap_or(""), &dest_path)?;
-            } else {
+            }
+            else {
                 self.copy_file(relative_path.to_str().unwrap_or(""), &dest_path)?;
             }
         }
-        
+
         Ok(())
     }
 }

@@ -1,5 +1,5 @@
 //! Dockerfile AST executor module
-//! 
+//!
 //! This module provides functionality to execute Dockerfile instructions using AST.
 
 use docker_types::DockerError;
@@ -31,22 +31,18 @@ pub struct ExecutionState {
 pub fn execute_dockerfile(context: &std::path::Path) -> Result<ExecutionState, DockerError> {
     // Validate build context directory
     if !context.exists() || !context.is_dir() {
-        return Err(DockerError::storage_read_failed(
-            format!("Build context directory not found: {:?}", context)
-        ));
+        return Err(DockerError::storage_read_failed(format!("Build context directory not found: {:?}", context)));
     }
-    
+
     let mut state = ExecutionState::default();
-    
+
     // Set default working directory
     state.working_dir = "/".to_string();
-    
+
     // Execute Dockerfile instructions using oak-dockerfile
     // This is a placeholder implementation
     // In a real implementation, you would use oak-dockerfile's AST executor
     println!("Executing Dockerfile instructions using oak-dockerfile");
-    
+
     Ok(state)
 }
-
-

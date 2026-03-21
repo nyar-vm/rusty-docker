@@ -5,9 +5,11 @@
 //! 提供 Linux 命名空间的创建、管理和切换功能，包括 PID、Mount、Network、
 //! UTS、IPC 和 User 命名空间。
 
-use std::fs;
-use std::os::unix::io::RawFd;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    os::unix::io::RawFd,
+    path::{Path, PathBuf},
+};
 
 use docker_types::{DockerError, Result};
 
@@ -79,16 +81,7 @@ pub struct NamespaceConfig {
 impl NamespaceConfig {
     /// 创建默认的命名空间配置，启用所有命名空间
     pub fn all() -> Self {
-        Self {
-            pid: true,
-            network: true,
-            mount: true,
-            uts: true,
-            ipc: true,
-            user: false,
-            uid_mapping: None,
-            gid_mapping: None,
-        }
+        Self { pid: true, network: true, mount: true, uts: true, ipc: true, user: false, uid_mapping: None, gid_mapping: None }
     }
 
     /// 获取组合后的 clone 标志
@@ -131,11 +124,7 @@ pub struct IdMapping {
 impl IdMapping {
     /// 创建新的 ID 映射
     pub fn new(container_id: u32, host_id: u32, size: u32) -> Self {
-        Self {
-            container_id,
-            host_id,
-            size,
-        }
+        Self { container_id, host_id, size }
     }
 
     /// 格式化 ID 映射为字符串
@@ -154,8 +143,7 @@ impl NamespaceManager {
     /// 创建新的命名空间管理器
     pub fn new(base_path: impl AsRef<Path>) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
-        fs::create_dir_all(&base_path)
-            .map_err(|e| DockerError::io_error("create_namespace_dir", e.to_string()))?;
+        fs::create_dir_all(&base_path).map_err(|e| DockerError::io_error("create_namespace_dir", e.to_string()))?;
         Ok(Self { base_path })
     }
 
@@ -176,8 +164,7 @@ impl NamespaceManager {
 
     /// 获取容器命名空间的路径
     pub fn get_namespace_path(&self, container_id: &str, ns_type: NamespaceType) -> PathBuf {
-        self.base_path
-            .join(format!("{}-{}", container_id, ns_type.as_str()))
+        self.base_path.join(format!("{}-{}", container_id, ns_type.as_str()))
     }
 
     /// 获取进程的命名空间路径
@@ -246,9 +233,11 @@ impl NamespaceManager {
     /// 通过路径进入命名空间
     #[cfg(target_os = "linux")]
     pub fn enter_namespace_by_path(ns_path: &Path, ns_type: NamespaceType) -> Result<()> {
-        use nix::fcntl::{open, OFlag};
-        use nix::sys::stat::Mode;
-        use nix::unistd::close;
+        use nix::{
+            fcntl::{OFlag, open},
+            sys::stat::Mode,
+            unistd::close,
+        };
 
         let fd = open(ns_path, OFlag::O_RDONLY, Mode::empty())
             .map_err(|e| DockerError::io_error("open_namespace", e.to_string()))?;
@@ -263,8 +252,7 @@ impl NamespaceManager {
     /// 通过文件描述符进入命名空间
     #[cfg(target_os = "linux")]
     pub fn enter_namespace_by_fd(fd: RawFd, ns_type: NamespaceType) -> Result<()> {
-        nix::sched::setns(fd, ns_type.clone_flag())
-            .map_err(|e| DockerError::io_error("set_namespace", e.to_string()))?;
+        nix::sched::setns(fd, ns_type.clone_flag()).map_err(|e| DockerError::io_error("set_namespace", e.to_string()))?;
         Ok(())
     }
 
@@ -304,21 +292,19 @@ impl NamespaceManager {
     where
         F: FnOnce() -> i32 + Send + 'static,
     {
-        use nix::sched::{clone, CloneFlags};
-        use nix::sys::wait::waitpid;
-        use nix::unistd::Pid;
+        use nix::{
+            sched::{CloneFlags, clone},
+            sys::wait::waitpid,
+            unistd::Pid,
+        };
 
         const STACK_SIZE: usize = 1024 * 1024;
         let mut stack = vec![0u8; STACK_SIZE];
 
         let flags = config.clone_flags();
 
-        let child_pid = clone(
-            Box::new(child_func),
-            &mut stack,
-            flags,
-            None,
-        ).map_err(|e| DockerError::io_error("clone", e.to_string()))?;
+        let child_pid =
+            clone(Box::new(child_func), &mut stack, flags, None).map_err(|e| DockerError::io_error("clone", e.to_string()))?;
 
         Ok(child_pid.as_raw())
     }
@@ -326,7 +312,7 @@ impl NamespaceManager {
     /// 创建单个命名空间
     #[cfg(target_os = "linux")]
     pub fn create_namespace(&self, ns_type: NamespaceType) -> Result<i32> {
-        use nix::sched::{clone, CloneFlags};
+        use nix::sched::{CloneFlags, clone};
 
         const STACK_SIZE: usize = 1024 * 1024;
         let mut stack = vec![0u8; STACK_SIZE];
@@ -343,7 +329,8 @@ impl NamespaceManager {
             &mut stack,
             flags,
             None,
-        ).map_err(|e| DockerError::io_error("clone", e.to_string()))?;
+        )
+        .map_err(|e| DockerError::io_error("clone", e.to_string()))?;
 
         Ok(child_pid.as_raw())
     }
@@ -359,16 +346,14 @@ impl NamespaceManager {
     #[cfg(target_os = "linux")]
     pub fn unshare_namespaces(&self, config: &NamespaceConfig) -> Result<()> {
         let flags = config.clone_flags();
-        nix::sched::unshare(flags)
-            .map_err(|e| DockerError::io_error("unshare", e.to_string()))?;
+        nix::sched::unshare(flags).map_err(|e| DockerError::io_error("unshare", e.to_string()))?;
         Ok(())
     }
 
     /// 设置用户命名空间的 UID 映射
     #[cfg(target_os = "linux")]
     pub fn set_uid_mapping(&self, pid: i32, mappings: &[IdMapping]) -> Result<()> {
-        use std::fs::OpenOptions;
-        use std::io::Write;
+        use std::{fs::OpenOptions, io::Write};
 
         let uid_map_path = format!("/proc/{}/uid_map", pid);
         let mut file = OpenOptions::new()
@@ -376,14 +361,9 @@ impl NamespaceManager {
             .open(&uid_map_path)
             .map_err(|e| DockerError::io_error("open_uid_map", e.to_string()))?;
 
-        let mapping_str = mappings
-            .iter()
-            .map(|m| m.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        let mapping_str = mappings.iter().map(|m| m.to_string()).collect::<Vec<_>>().join("\n");
 
-        file.write_all(mapping_str.as_bytes())
-            .map_err(|e| DockerError::io_error("write_uid_map", e.to_string()))?;
+        file.write_all(mapping_str.as_bytes()).map_err(|e| DockerError::io_error("write_uid_map", e.to_string()))?;
 
         Ok(())
     }
@@ -391,8 +371,7 @@ impl NamespaceManager {
     /// 设置用户命名空间的 GID 映射
     #[cfg(target_os = "linux")]
     pub fn set_gid_mapping(&self, pid: i32, mappings: &[IdMapping]) -> Result<()> {
-        use std::fs::OpenOptions;
-        use std::io::Write;
+        use std::{fs::OpenOptions, io::Write};
 
         let gid_map_path = format!("/proc/{}/gid_map", pid);
         let mut file = OpenOptions::new()
@@ -400,14 +379,9 @@ impl NamespaceManager {
             .open(&gid_map_path)
             .map_err(|e| DockerError::io_error("open_gid_map", e.to_string()))?;
 
-        let mapping_str = mappings
-            .iter()
-            .map(|m| m.to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        let mapping_str = mappings.iter().map(|m| m.to_string()).collect::<Vec<_>>().join("\n");
 
-        file.write_all(mapping_str.as_bytes())
-            .map_err(|e| DockerError::io_error("write_gid_map", e.to_string()))?;
+        file.write_all(mapping_str.as_bytes()).map_err(|e| DockerError::io_error("write_gid_map", e.to_string()))?;
 
         Ok(())
     }
@@ -426,8 +400,7 @@ impl NamespaceManager {
         for ns_type in types {
             let path = self.get_namespace_path(container_id, ns_type);
             if path.exists() {
-                fs::remove_file(&path)
-                    .map_err(|e| DockerError::io_error("cleanup_namespace", e.to_string()))?;
+                fs::remove_file(&path).map_err(|e| DockerError::io_error("cleanup_namespace", e.to_string()))?;
             }
         }
 
@@ -482,9 +455,6 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let manager = NamespaceManager::new(temp_dir.path()).unwrap();
         let path = manager.get_namespace_path("test-container", NamespaceType::Pid);
-        assert_eq!(
-            path,
-            temp_dir.path().join("test-container-pid")
-        );
+        assert_eq!(path, temp_dir.path().join("test-container-pid"));
     }
 }

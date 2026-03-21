@@ -1,6 +1,5 @@
 use docker_tools::dockerfile::parser::{parse_dockerfile, parse_dockerfile_from_file};
-use std::fs::File;
-use std::io::Write;
+use std::{fs::File, io::Write};
 use tempfile::tempdir;
 
 #[test]
@@ -16,7 +15,7 @@ CMD ["echo", "Server started"]
 
     let result = parse_dockerfile(dockerfile_content);
     assert!(result.is_ok(), "Failed to parse valid Dockerfile: {:?}", result);
-    
+
     let ast = result.unwrap();
     assert!(!ast.instructions.is_empty(), "AST should contain instructions");
 }
@@ -40,14 +39,14 @@ EXPOSE 8080
 fn test_parse_dockerfile_from_file() {
     let temp_dir = tempdir().expect("Failed to create temp dir");
     let dockerfile_path = temp_dir.path().join("Dockerfile");
-    
+
     let mut file = File::create(&dockerfile_path).expect("Failed to create Dockerfile");
     writeln!(file, "FROM alpine:latest").expect("Failed to write to Dockerfile");
     writeln!(file, "WORKDIR /app").expect("Failed to write to Dockerfile");
-    
+
     let result = parse_dockerfile_from_file(&dockerfile_path);
     assert!(result.is_ok(), "Failed to parse Dockerfile from file: {:?}", result);
-    
+
     let ast = result.unwrap();
     assert!(!ast.instructions.is_empty(), "AST should contain instructions");
 }

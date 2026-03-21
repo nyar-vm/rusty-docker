@@ -63,11 +63,7 @@ impl CgroupManager {
     /// 检测系统使用的 cgroup 版本
     fn detect_version(cgroup_root: &Path) -> Result<CgroupVersion> {
         let cgroup2_mount = cgroup_root.join("cgroup.controllers");
-        if cgroup2_mount.exists() {
-            Ok(CgroupVersion::V2)
-        } else {
-            Ok(CgroupVersion::V1)
-        }
+        if cgroup2_mount.exists() { Ok(CgroupVersion::V2) } else { Ok(CgroupVersion::V1) }
     }
 
     #[cfg(target_os = "linux")]
@@ -95,7 +91,8 @@ impl CgroupManager {
 
             if self.is_v2() {
                 self.setup_v2_cgroup(&cgroup_path, limits)?;
-            } else {
+            }
+            else {
                 self.setup_v1_cgroup(&cgroup_path, limits)?;
             }
 
@@ -150,8 +147,7 @@ impl CgroupManager {
         let quota = (cpu_limit * period as f64) as i64;
         let cpu_max_path = cgroup_path.join("cpu.max");
         let cpu_max_value = format!("{} {}", quota, period);
-        fs::write(&cpu_max_path, cpu_max_value)
-            .map_err(|e| DockerError::io_error("set_cpu_limit", e.to_string()))?;
+        fs::write(&cpu_max_path, cpu_max_value).map_err(|e| DockerError::io_error("set_cpu_limit", e.to_string()))?;
         Ok(())
     }
 
@@ -161,8 +157,7 @@ impl CgroupManager {
         let io_max_path = cgroup_path.join("io.max");
         let limit_bps = (storage_limit as u64) * 1024 * 1024;
         let io_max_value = format!("{}:{} rbps={} wbps={}", 8, 0, limit_bps, limit_bps);
-        fs::write(&io_max_path, io_max_value)
-            .map_err(|e| DockerError::io_error("set_io_limit", e.to_string()))?;
+        fs::write(&io_max_path, io_max_value).map_err(|e| DockerError::io_error("set_io_limit", e.to_string()))?;
         Ok(())
     }
 
@@ -170,8 +165,7 @@ impl CgroupManager {
     /// 设置 cgroup v2 进程数限制
     fn set_v2_pids_limit(&self, cgroup_path: &Path) -> Result<()> {
         let pids_max_path = cgroup_path.join("pids.max");
-        fs::write(&pids_max_path, "4096")
-            .map_err(|e| DockerError::io_error("set_pids_limit", e.to_string()))?;
+        fs::write(&pids_max_path, "4096").map_err(|e| DockerError::io_error("set_pids_limit", e.to_string()))?;
         Ok(())
     }
 
@@ -199,12 +193,10 @@ impl CgroupManager {
         let quota = (cpu_limit * period as f64) as i64;
 
         let period_path = cpu_dir.join("cpu.cfs_period_us");
-        fs::write(&period_path, period.to_string())
-            .map_err(|e| DockerError::io_error("set_cpu_period_v1", e.to_string()))?;
+        fs::write(&period_path, period.to_string()).map_err(|e| DockerError::io_error("set_cpu_period_v1", e.to_string()))?;
 
         let quota_path = cpu_dir.join("cpu.cfs_quota_us");
-        fs::write(&quota_path, quota.to_string())
-            .map_err(|e| DockerError::io_error("set_cpu_quota_v1", e.to_string()))?;
+        fs::write(&quota_path, quota.to_string()).map_err(|e| DockerError::io_error("set_cpu_quota_v1", e.to_string()))?;
 
         Ok(())
     }
@@ -219,12 +211,10 @@ impl CgroupManager {
         let io_value = format!("8:0 {}", limit_bps);
 
         let read_path = blkio_dir.join("blkio.throttle.read_bps_device");
-        fs::write(&read_path, &io_value)
-            .map_err(|e| DockerError::io_error("set_io_read_v1", e.to_string()))?;
+        fs::write(&read_path, &io_value).map_err(|e| DockerError::io_error("set_io_read_v1", e.to_string()))?;
 
         let write_path = blkio_dir.join("blkio.throttle.write_bps_device");
-        fs::write(&write_path, io_value)
-            .map_err(|e| DockerError::io_error("set_io_write_v1", e.to_string()))?;
+        fs::write(&write_path, io_value).map_err(|e| DockerError::io_error("set_io_write_v1", e.to_string()))?;
 
         Ok(())
     }
@@ -239,14 +229,9 @@ impl CgroupManager {
         {
             let cgroup_path = self.get_cgroup_path(container_id);
 
-            let procs_path = if self.is_v2() {
-                cgroup_path.join("cgroup.procs")
-            } else {
-                cgroup_path.join("cgroup.procs")
-            };
+            let procs_path = if self.is_v2() { cgroup_path.join("cgroup.procs") } else { cgroup_path.join("cgroup.procs") };
 
-            fs::write(&procs_path, pid.to_string())
-                .map_err(|e| DockerError::io_error("add_process", e.to_string()))?;
+            fs::write(&procs_path, pid.to_string()).map_err(|e| DockerError::io_error("add_process", e.to_string()))?;
 
             Ok(())
         }
@@ -265,8 +250,7 @@ impl CgroupManager {
         #[cfg(target_os = "linux")]
         {
             let cgroup_path = self.get_cgroup_path(container_id);
-            fs::remove_dir_all(&cgroup_path)
-                .map_err(|e| DockerError::io_error("delete_cgroup", e.to_string()))?;
+            fs::remove_dir_all(&cgroup_path).map_err(|e| DockerError::io_error("delete_cgroup", e.to_string()))?;
             Ok(())
         }
 

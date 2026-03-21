@@ -1,4 +1,4 @@
-use docker_tools::dockerfile::{parser::parse_dockerfile, executor::execute_dockerfile};
+use docker_tools::dockerfile::{executor::execute_dockerfile, parser::parse_dockerfile};
 use tempfile::tempdir;
 
 #[test]
@@ -14,16 +14,16 @@ CMD ["echo", "Server started"]
 
     // Parse the Dockerfile
     let ast = parse_dockerfile(dockerfile_content).expect("Failed to parse Dockerfile");
-    
+
     // Create a temporary directory as build context
     let temp_dir = tempdir().expect("Failed to create temp dir");
-    
+
     // Execute the Dockerfile
     let result = execute_dockerfile(&ast, temp_dir.path());
     assert!(result.is_ok(), "Failed to execute Dockerfile: {:?}", result);
-    
+
     let state = result.unwrap();
-    
+
     // Verify the execution state
     assert_eq!(state.working_dir, "/app");
     assert_eq!(state.base_image, Some("alpine:latest".to_string()));
@@ -42,16 +42,16 @@ WORKDIR /app
 
     // Parse the Dockerfile
     let ast = parse_dockerfile(dockerfile_content).expect("Failed to parse Dockerfile");
-    
+
     // Create a temporary directory as build context
     let temp_dir = tempdir().expect("Failed to create temp dir");
-    
+
     // Execute the Dockerfile
     let result = execute_dockerfile(&ast, temp_dir.path());
     assert!(result.is_ok(), "Failed to execute Dockerfile: {:?}", result);
-    
+
     let state = result.unwrap();
-    
+
     // Verify environment variables
     assert_eq!(state.env_vars.get("APP_NAME"), Some(&"myapp".to_string()));
     assert_eq!(state.env_vars.get("APP_VERSION"), Some(&"1.0.0".to_string()));

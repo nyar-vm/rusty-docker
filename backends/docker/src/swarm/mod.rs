@@ -1,19 +1,24 @@
 #![warn(missing_docs)]
 
 //! Swarm 集群管理模块
-//! 
+//!
 //! 实现 Docker Swarm 集群的核心功能，包括：
 //! - 集群初始化和管理
 //! - 节点加入和退出
 //! - 集群状态同步
 //! - 服务编排和调度
 
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::{SystemTime, Duration};
+use std::{
+    sync::{Arc, Mutex, RwLock},
+    time::{Duration, SystemTime},
+};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use docker_types::{DockerError, Result as DockerResult, NodeInfo, NodeRole, NodeStatus, NodeAvailability, SwarmInfo, ServiceInfo, ServiceStatus, UpdateConfig, ServiceVersionInfo};
+use docker_types::{
+    DockerError, NodeAvailability, NodeInfo, NodeRole, NodeStatus, Result as DockerResult, ServiceInfo, ServiceStatus,
+    ServiceVersionInfo, SwarmInfo, UpdateConfig,
+};
 
 /// Swarm 集群状态
 #[derive(Debug, Clone)]
@@ -77,7 +82,7 @@ impl SwarmManager {
     /// 创建新的 Swarm 管理器
     pub fn new() -> Self {
         let (tx, _) = broadcast::channel(100);
-        
+
         Self {
             state: Arc::new(RwLock::new(SwarmState {
                 id: String::new(),
@@ -173,11 +178,7 @@ impl SwarmManager {
         }
 
         // 确定节点角色（基于 token 类型）
-        let role = if token.starts_with("SWMTKN-1-0-") {
-            NodeRole::Manager
-        } else {
-            NodeRole::Worker
-        };
+        let role = if token.starts_with("SWMTKN-1-0-") { NodeRole::Manager } else { NodeRole::Worker };
 
         // 创建本地节点信息
         let local_node = NodeInfo {
@@ -202,12 +203,14 @@ impl SwarmManager {
         state.name = None;
         state.managers = if role == NodeRole::Manager {
             vec![local_node.clone()]
-        } else {
+        }
+        else {
             Vec::new() // 实际实现中应该从管理节点获取
         };
         state.workers = if role == NodeRole::Worker {
             vec![local_node.clone()]
-        } else {
+        }
+        else {
             Vec::new() // 实际实现中应该从管理节点获取
         };
         state.services = Vec::new(); // 实际实现中应该从管理节点获取
@@ -239,7 +242,9 @@ impl SwarmManager {
         // 检查是否是最后一个管理节点
         let state = self.state.read().unwrap();
         if state.managers.len() == 1 && state.managers[0].id == node_id && !force {
-            return Err(DockerError::swarm_error("This is the last manager in the swarm. Use --force to remove it".to_string()));
+            return Err(DockerError::swarm_error(
+                "This is the last manager in the swarm. Use --force to remove it".to_string(),
+            ));
         }
 
         // 重置集群状态
@@ -348,9 +353,11 @@ impl SwarmManager {
         let state = self.state.read().unwrap();
         if let Some(node) = state.managers.iter().find(|n| n.id == node_id) {
             Ok(node.clone())
-        } else if let Some(node) = state.workers.iter().find(|n| n.id == node_id) {
+        }
+        else if let Some(node) = state.workers.iter().find(|n| n.id == node_id) {
             Ok(node.clone())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("node", node_id.to_string()))
         }
     }
@@ -398,7 +405,8 @@ impl SwarmManager {
             }
             state.managers[index] = node.clone();
             updated_node = Some(node);
-        } else if let Some(index) = state.workers.iter().position(|n| n.id == node_id) {
+        }
+        else if let Some(index) = state.workers.iter().position(|n| n.id == node_id) {
             let mut node = state.workers[index].clone();
             if let Some(role) = role {
                 node.role = match role.as_str() {
@@ -417,7 +425,8 @@ impl SwarmManager {
             }
             state.workers[index] = node.clone();
             updated_node = Some(node);
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("node", node_id.to_string()));
         }
 
@@ -458,7 +467,8 @@ impl SwarmManager {
             self.tx.send(SwarmEvent::NodeStatusChange(node.id, node.status)).unwrap();
 
             Ok(())
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("node", node_id.to_string()));
         }
     }
@@ -497,7 +507,8 @@ impl SwarmManager {
             self.tx.send(SwarmEvent::NodeStatusChange(node.id, node.status)).unwrap();
 
             Ok(())
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("node", node_id.to_string()));
         }
     }
@@ -528,7 +539,8 @@ impl SwarmManager {
             }
             state.managers.remove(index);
             node_removed = true;
-        } else if let Some(index) = state.workers.iter().position(|n| n.id == node_id) {
+        }
+        else if let Some(index) = state.workers.iter().position(|n| n.id == node_id) {
             state.workers.remove(index);
             node_removed = true;
         }
@@ -639,7 +651,8 @@ impl SwarmManager {
         let state = self.state.read().unwrap();
         if let Some(service) = state.services.iter().find(|s| s.id == service_id || s.name == service_id) {
             Ok(service.clone())
-        } else {
+        }
+        else {
             Err(DockerError::not_found("service", service_id.to_string()))
         }
     }
@@ -671,7 +684,7 @@ impl SwarmManager {
         // 查找并更新服务
         if let Some(index) = state.services.iter().position(|s| s.id == service_id || s.name == service_id) {
             let mut service = state.services[index].clone();
-            
+
             // 保存历史版本
             let version_info = ServiceVersionInfo {
                 version: service.version,
@@ -680,7 +693,7 @@ impl SwarmManager {
                 updated_at: service.updated_at,
             };
             service.history.push(version_info);
-            
+
             // 更新服务信息
             if let Some(image) = image {
                 service.image = image;
@@ -691,20 +704,21 @@ impl SwarmManager {
             if let Some(update_config) = update_config {
                 service.update_config = Some(update_config);
             }
-            
+
             // 执行滚动更新
             service.status = ServiceStatus::Updating;
             service.version += 1;
             service.updated_at = SystemTime::now();
-            
+
             // 模拟滚动更新过程
             // 实际实现中，这里应该根据 update_config 进行滚动更新
             tokio::time::sleep(Duration::from_secs(2)).await;
-            
+
             service.status = ServiceStatus::Running;
             state.services[index] = service.clone();
             updated_service = Some(service);
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("service", service_id.to_string()));
         }
 
@@ -782,7 +796,8 @@ impl SwarmManager {
             service.updated_at = SystemTime::now();
             state.services[index] = service.clone();
             updated_service = Some(service);
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("service", service_id.to_string()));
         }
 
@@ -816,15 +831,15 @@ impl SwarmManager {
         // 查找并回滚服务
         if let Some(index) = state.services.iter().position(|s| s.id == service_id || s.name == service_id) {
             let mut service = state.services[index].clone();
-            
+
             // 检查是否有历史版本
             if service.history.is_empty() {
                 return Err(DockerError::swarm_error("No history available for rollback".to_string()));
             }
-            
+
             // 获取上一个版本
             let prev_version = service.history.pop().unwrap();
-            
+
             // 保存当前版本到历史记录
             let current_version = ServiceVersionInfo {
                 version: service.version,
@@ -833,22 +848,23 @@ impl SwarmManager {
                 updated_at: service.updated_at,
             };
             service.history.push(current_version);
-            
+
             // 回滚到上一个版本
             service.image = prev_version.image;
             service.replicas = prev_version.replicas;
             service.status = ServiceStatus::Updating;
             service.version += 1;
             service.updated_at = SystemTime::now();
-            
+
             // 模拟回滚过程
             // 实际实现中，这里应该根据 update_config 进行滚动更新
             tokio::time::sleep(Duration::from_secs(2)).await;
-            
+
             service.status = ServiceStatus::Running;
             state.services[index] = service.clone();
             updated_service = Some(service);
-        } else {
+        }
+        else {
             return Err(DockerError::not_found("service", service_id.to_string()));
         }
 
@@ -891,7 +907,5 @@ pub fn init_swarm_manager() {
 
 /// 获取 Swarm 管理器
 pub fn get_swarm_manager() -> Arc<SwarmManager> {
-    unsafe {
-        SWARM_MANAGER.as_ref().unwrap().clone()
-    }
+    unsafe { SWARM_MANAGER.as_ref().unwrap().clone() }
 }

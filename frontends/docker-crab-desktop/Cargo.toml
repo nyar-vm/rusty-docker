@@ -1,12 +1,12 @@
 [package]
 name = "oh-my-crab"
 publish = false
-version = "0.0.0"
+version = { workspace = true }
 description = "OpenCrab GUI client"
-authors = ["you"]
-license = ""
-repository = ""
-edition = "2021"
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
 
 
 

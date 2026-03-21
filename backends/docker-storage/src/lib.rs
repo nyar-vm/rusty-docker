@@ -3,7 +3,7 @@
 pub mod overlay;
 
 use docker_types::DockerError;
-use overlay::{StorageDriver, OverlayDriver};
+use overlay::{OverlayDriver, StorageDriver};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
@@ -23,7 +23,8 @@ impl StorageManager {
     }
 
     pub async fn ensure_directories(&self) -> StorageResult<()> {
-        let directories = [&self.base_path, &self.containers_path()?, &self.images_path()?, &self.volumes_path()?, &self.tmp_path()?];
+        let directories =
+            [&self.base_path, &self.containers_path()?, &self.images_path()?, &self.volumes_path()?, &self.tmp_path()?];
 
         for dir in directories {
             if !dir.exists() {

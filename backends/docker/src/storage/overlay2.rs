@@ -1,20 +1,24 @@
 #![warn(missing_docs)]
 
 //! Overlay2 文件系统驱动
-//! 
+//!
 //! 提供容器文件系统的 overlay2 挂载支持，包括：
 //! - 创建和管理 overlay2 挂载
 //! - 处理 whiteout 文件
 //! - 准备容器根文件系统
 //! - 清理容器文件系统
 
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::{
+    collections::HashSet,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use docker_types::{DockerError, Result};
-use nix::mount::{mount, MsFlags};
-use nix::sys::stat::makedev;
+use nix::{
+    mount::{MsFlags, mount},
+    sys::stat::makedev,
+};
 
 /// Overlay2 文件系统驱动
 pub struct Overlay2Driver {
@@ -25,9 +29,7 @@ pub struct Overlay2Driver {
 impl Overlay2Driver {
     /// 创建新的 Overlay2Driver 实例
     pub fn new(storage_root: impl Into<PathBuf>) -> Self {
-        Self {
-            storage_root: storage_root.into(),
-        }
+        Self { storage_root: storage_root.into() }
     }
 
     /// 获取容器存储目录
@@ -63,8 +65,7 @@ impl Overlay2Driver {
     /// 初始化容器的 overlay2 目录结构
     pub fn initialize_container_dirs(&self, container_id: &str) -> Result<()> {
         let container_dir = self.get_container_dir(container_id);
-        fs::create_dir_all(&container_dir)
-            .map_err(|e| DockerError::io_error("create container dir", e.to_string()))?;
+        fs::create_dir_all(&container_dir).map_err(|e| DockerError::io_error("create container dir", e.to_string()))?;
 
         let dirs = [
             self.get_lowerdir(container_id),
@@ -74,8 +75,7 @@ impl Overlay2Driver {
         ];
 
         for dir in &dirs {
-            fs::create_dir_all(dir)
-                .map_err(|e| DockerError::io_error("create overlay dir", e.to_string()))?;
+            fs::create_dir_all(dir).map_err(|e| DockerError::io_error("create overlay dir", e.to_string()))?;
         }
 
         Ok(())
@@ -93,9 +93,7 @@ impl Overlay2Driver {
         let workdir = self.get_workdir(container_id);
         let merged_dir = self.get_merged_dir(container_id);
 
-        let lowerdirs = vec![image_dir.to_str().ok_or_else(|| 
-            DockerError::internal("Invalid image path")
-        )?];
+        let lowerdirs = vec![image_dir.to_str().ok_or_else(|| DockerError::internal("Invalid image path"))?];
 
         let lowerdir_str = lowerdirs.join(":");
 
@@ -106,13 +104,8 @@ impl Overlay2Driver {
             workdir.to_str().ok_or_else(|| DockerError::internal("Invalid workdir path"))?
         );
 
-        mount(
-            Some("overlay"),
-            merged_dir.as_path(),
-            Some("overlay"),
-            MsFlags::empty(),
-            Some(options.as_str()),
-        ).map_err(|e| DockerError::internal(format!("Failed to mount overlay: {}", e)))?;
+        mount(Some("overlay"), merged_dir.as_path(), Some("overlay"), MsFlags::empty(), Some(options.as_str()))
+            .map_err(|e| DockerError::internal(format!("Failed to mount overlay: {}", e)))?;
 
         Ok(())
     }
@@ -143,8 +136,7 @@ impl Overlay2Driver {
 
         for (source, fstype, mountpoint, options) in mounts {
             let target_path = merged_dir.join(mountpoint.strip_prefix('/').unwrap_or(mountpoint));
-            fs::create_dir_all(&target_path)
-                .map_err(|e| DockerError::io_error("create mountpoint", e.to_string()))?;
+            fs::create_dir_all(&target_path).map_err(|e| DockerError::io_error("create mountpoint", e.to_string()))?;
 
             let options_str = options.join(",");
             mount(
@@ -153,7 +145,8 @@ impl Overlay2Driver {
                 Some(fstype),
                 MsFlags::empty(),
                 if options_str.is_empty() { None } else { Some(options_str.as_str()) },
-            ).map_err(|e| DockerError::internal(format!("Failed to mount {}: {}", fstype, e)))?;
+            )
+            .map_err(|e| DockerError::internal(format!("Failed to mount {}: {}", fstype, e)))?;
         }
 
         self.create_dev_nodes(&merged_dir)?;
@@ -181,20 +174,16 @@ impl Overlay2Driver {
             if !node_path.exists() {
                 #[cfg(target_os = "linux")]
                 {
-                    use std::os::unix::fs::mknod;
-                    use std::os::unix::fs::FileTypeExt;
+                    use std::os::unix::fs::{FileTypeExt, mknod};
                     let file_type = fs::FileType::from_raw(libc::S_IFCHR);
                     let dev = makedev(major, minor);
-                    mknod(&node_path, file_type, dev)
-                        .map_err(|e| DockerError::io_error("mknod", e.to_string()))?;
-                    
+                    mknod(&node_path, file_type, dev).map_err(|e| DockerError::io_error("mknod", e.to_string()))?;
+
                     use std::os::unix::fs::PermissionsExt;
-                    let mut perms = fs::metadata(&node_path)
-                        .map_err(|e| DockerError::io_error("metadata", e.to_string()))?
-                        .permissions();
+                    let mut perms =
+                        fs::metadata(&node_path).map_err(|e| DockerError::io_error("metadata", e.to_string()))?.permissions();
                     perms.set_mode(mode);
-                    fs::set_permissions(&node_path, perms)
-                        .map_err(|e| DockerError::io_error("chmod", e.to_string()))?;
+                    fs::set_permissions(&node_path, perms).map_err(|e| DockerError::io_error("chmod", e.to_string()))?;
                 }
             }
         }
@@ -206,15 +195,7 @@ impl Overlay2Driver {
     pub fn cleanup_container_rootfs(&self, container_id: &str) -> Result<()> {
         let merged_dir = self.get_merged_dir(container_id);
 
-        let mountpoints = [
-            "/dev/pts",
-            "/dev/shm",
-            "/dev",
-            "/proc",
-            "/sys",
-            "/run",
-            "/tmp",
-        ];
+        let mountpoints = ["/dev/pts", "/dev/shm", "/dev", "/proc", "/sys", "/run", "/tmp"];
 
         for mountpoint in mountpoints {
             let target_path = merged_dir.join(mountpoint.strip_prefix('/').unwrap_or(mountpoint));
@@ -239,8 +220,7 @@ impl Overlay2Driver {
             return Ok(());
         }
 
-        let entries = fs::read_dir(dir)
-            .map_err(|e| DockerError::io_error("read_dir", e.to_string()))?;
+        let entries = fs::read_dir(dir).map_err(|e| DockerError::io_error("read_dir", e.to_string()))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| DockerError::io_error("read entry", e.to_string()))?;
@@ -249,9 +229,9 @@ impl Overlay2Driver {
             let file_name_str = file_name.to_string_lossy();
 
             if file_name_str.starts_with(".wh.") {
-                fs::remove_file(&path)
-                    .map_err(|e| DockerError::io_error("remove whiteout", e.to_string()))?;
-            } else if path.is_dir() {
+                fs::remove_file(&path).map_err(|e| DockerError::io_error("remove whiteout", e.to_string()))?;
+            }
+            else if path.is_dir() {
                 self.cleanup_whiteouts_in_dir(&path)?;
             }
         }
@@ -263,8 +243,7 @@ impl Overlay2Driver {
     pub fn delete_container(&self, container_id: &str) -> Result<()> {
         let container_dir = self.get_container_dir(container_id);
         if container_dir.exists() {
-            fs::remove_dir_all(&container_dir)
-                .map_err(|e| DockerError::io_error("remove container dir", e.to_string()))?;
+            fs::remove_dir_all(&container_dir).map_err(|e| DockerError::io_error("remove container dir", e.to_string()))?;
         }
         Ok(())
     }
@@ -283,14 +262,12 @@ impl Overlay2Driver {
             return Ok(());
         }
 
-        let entries = fs::read_dir(current)
-            .map_err(|e| DockerError::io_error("read_dir", e.to_string()))?;
+        let entries = fs::read_dir(current).map_err(|e| DockerError::io_error("read_dir", e.to_string()))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| DockerError::io_error("read entry", e.to_string()))?;
             let path = entry.path();
-            let rel_path = path.strip_prefix(base)
-                .map_err(|e| DockerError::internal(format!("Strip prefix error: {}", e)))?;
+            let rel_path = path.strip_prefix(base).map_err(|e| DockerError::internal(format!("Strip prefix error: {}", e)))?;
 
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
@@ -308,8 +285,7 @@ impl Overlay2Driver {
 }
 
 impl Drop for Overlay2Driver {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 #[cfg(test)]

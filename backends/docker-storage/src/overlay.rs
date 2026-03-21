@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! 联合文件系统实现
-//! 
+//!
 //! 实现 OverlayFS 等联合文件系统的支持，用于镜像和容器的存储管理。
 
 use std::{fs, path::Path};
@@ -12,16 +12,16 @@ use docker_types::{DockerError, Result};
 pub trait StorageDriver {
     /// 创建层
     fn create_layer(&self, layer_id: &str, parent_id: Option<&str>) -> Result<()>;
-    
+
     /// 挂载层
     fn mount_layer(&self, layer_id: &str, mount_point: &Path) -> Result<()>;
-    
+
     /// 卸载层
     fn unmount_layer(&self, mount_point: &Path) -> Result<()>;
-    
+
     /// 删除层
     fn delete_layer(&self, layer_id: &str) -> Result<()>;
-    
+
     /// 获取层路径
     fn get_layer_path(&self, layer_id: &str) -> String;
 }
@@ -36,15 +36,13 @@ impl OverlayDriver {
     /// 创建新的 OverlayFS 驱动
     pub fn new(base_path: &str) -> Result<Self> {
         // 创建存储目录
-        fs::create_dir_all(base_path)
-            .map_err(|e| DockerError::io_error("create_overlay_dir", e.to_string()))?;
+        fs::create_dir_all(base_path).map_err(|e| DockerError::io_error("create_overlay_dir", e.to_string()))?;
 
         // 创建子目录
         let subdirs = ["lower", "upper", "work", "merged"];
         for subdir in &subdirs {
             let dir_path = format!("{}/{}", base_path, subdir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| DockerError::io_error("create_subdir", e.to_string()))?;
+            fs::create_dir_all(&dir_path).map_err(|e| DockerError::io_error("create_subdir", e.to_string()))?;
         }
 
         Ok(Self { base_path: base_path.to_string() })
@@ -60,15 +58,13 @@ impl StorageDriver for OverlayDriver {
     /// 创建层
     fn create_layer(&self, layer_id: &str, parent_id: Option<&str>) -> Result<()> {
         let layer_path = self.get_layer_path(layer_id);
-        fs::create_dir_all(&layer_path)
-            .map_err(|e| DockerError::io_error("create_layer", e.to_string()))?;
+        fs::create_dir_all(&layer_path).map_err(|e| DockerError::io_error("create_layer", e.to_string()))?;
 
         // 创建层的子目录
         let subdirs = ["lower", "upper", "work", "merged"];
         for subdir in &subdirs {
             let dir_path = format!("{}/{}", layer_path, subdir);
-            fs::create_dir_all(&dir_path)
-                .map_err(|e| DockerError::io_error("create_layer_subdir", e.to_string()))?;
+            fs::create_dir_all(&dir_path).map_err(|e| DockerError::io_error("create_layer_subdir", e.to_string()))?;
         }
 
         // 如果有父层，设置 lower 目录
@@ -101,7 +97,10 @@ impl StorageDriver for OverlayDriver {
         // 构建 mount 命令
         let mount_cmd = format!(
             "mount -t overlay overlay -o lowerdir={},upperdir={},workdir={} {}",
-            lowerdir, upperdir, workdir, mount_point.to_str().unwrap()
+            lowerdir,
+            upperdir,
+            workdir,
+            mount_point.to_str().unwrap()
         );
 
         // 执行 mount 命令
@@ -141,8 +140,7 @@ impl StorageDriver for OverlayDriver {
     fn delete_layer(&self, layer_id: &str) -> Result<()> {
         let layer_path = self.get_layer_path(layer_id);
         if Path::new(&layer_path).exists() {
-            fs::remove_dir_all(&layer_path)
-                .map_err(|e| DockerError::io_error("delete_layer", e.to_string()))?;
+            fs::remove_dir_all(&layer_path).map_err(|e| DockerError::io_error("delete_layer", e.to_string()))?;
         }
         Ok(())
     }

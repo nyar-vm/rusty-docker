@@ -1,5 +1,5 @@
 //! Docker 工具集的通用功能库
-//! 
+//!
 //! 提供 docker、docker-compose、dockerd 等工具共享的通用功能，包括镜像管理
 
 #![warn(missing_docs)]
@@ -10,7 +10,11 @@ use clap::{Arg, ArgAction, Command};
 use docker_image::ImageService;
 use docker_types::{DockerError, ImageInfo};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}, time::SystemTime};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 
 /// 通用命令行工具配置
 #[derive(Debug, Serialize, Deserialize)]
@@ -134,13 +138,11 @@ impl ImageManager {
         }
 
         match fs::read_to_string(&dockerignore_path) {
-            Ok(content) => {
-                content
-                    .lines()
-                    .map(|line| line.trim().to_string())
-                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
-                    .collect()
-            },
+            Ok(content) => content
+                .lines()
+                .map(|line| line.trim().to_string())
+                .filter(|line| !line.is_empty() && !line.starts_with('#'))
+                .collect(),
             Err(_) => Vec::new(),
         }
     }
@@ -184,7 +186,8 @@ impl ImageManager {
                         if let Ok(dir_files) = Self::collect_context_files(&path) {
                             files.extend(dir_files);
                         }
-                    } else {
+                    }
+                    else {
                         files.push(path);
                     }
                 }
@@ -216,21 +219,19 @@ impl ImageManager {
     ) -> Result<ImageInfo> {
         println!("Building image: {}", tag);
         println!("Context: {}", context);
-        
+
         let context_dir = Path::new(context);
         if !context_dir.exists() {
             return Err(DockerError::container_error(format!("Context directory not found: {}", context)));
         }
 
         // 确定 Dockerfile 路径
-        let dockerfile_path = dockerfile
-            .map(|p| Path::new(p).to_path_buf())
-            .unwrap_or_else(|| context_dir.join("Dockerfile"));
+        let dockerfile_path = dockerfile.map(|p| Path::new(p).to_path_buf()).unwrap_or_else(|| context_dir.join("Dockerfile"));
 
         if !dockerfile_path.exists() {
             return Err(DockerError::container_error(format!("Dockerfile not found: {:?}", dockerfile_path)));
         }
-        
+
         println!("Dockerfile: {:?}", dockerfile_path);
 
         // 收集构建上下文文件
@@ -262,17 +263,13 @@ impl ImageManager {
         if let Some(target) = target {
             println!("Target stage: {}", target);
         }
-        
+
         let image_service = ImageService::new()?;
-        let image_id = image_service.build_image(
-            context,
-            dockerfile_path.to_str().unwrap_or("Dockerfile"),
-            tag
-        ).await
-        .map_err(|e| {
-            println!("Error building image: {}", e);
-            e
-        })?;
+        let image_id =
+            image_service.build_image(context, dockerfile_path.to_str().unwrap_or("Dockerfile"), tag).await.map_err(|e| {
+                println!("Error building image: {}", e);
+                e
+            })?;
 
         println!("Successfully built image: {}", image_id);
         println!("Tagged as: {}", tag);

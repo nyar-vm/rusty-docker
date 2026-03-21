@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! 存储服务
-//! 
+//!
 //! 提供镜像、容器和卷的存储管理功能，集成了 overlay2 文件系统支持。
 
 use std::{fs, io::Write, path::Path};
@@ -69,8 +69,7 @@ impl StorageService {
 
         let container_path = self.get_container_path(container_id);
         let logs_path = format!("{}/logs", container_path);
-        fs::create_dir_all(&logs_path)
-            .map_err(|e| DockerError::io_error("create logs dir", e.to_string()))?;
+        fs::create_dir_all(&logs_path).map_err(|e| DockerError::io_error("create logs dir", e.to_string()))?;
 
         Ok(())
     }
@@ -86,8 +85,7 @@ impl StorageService {
     /// 创建卷存储目录
     pub fn create_volume_dir(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
-        fs::create_dir_all(&volume_path)
-            .map_err(|e| DockerError::io_error("create volume dir", e.to_string()))?;
+        fs::create_dir_all(&volume_path).map_err(|e| DockerError::io_error("create volume dir", e.to_string()))?;
         Ok(())
     }
 
@@ -95,8 +93,7 @@ impl StorageService {
     pub fn delete_volume_dir(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
         if Path::new(&volume_path).exists() {
-            fs::remove_dir_all(&volume_path)
-                .map_err(|e| DockerError::io_error("remove volume dir", e.to_string()))?;
+            fs::remove_dir_all(&volume_path).map_err(|e| DockerError::io_error("remove volume dir", e.to_string()))?;
         }
         Ok(())
     }
@@ -146,8 +143,7 @@ impl StorageService {
     pub async fn delete_image(&self, image_id: &str) -> Result<()> {
         let image_path = self.get_image_path(image_id);
         if Path::new(&image_path).exists() {
-            fs::remove_dir_all(&image_path)
-                .map_err(|e| DockerError::io_error("remove image dir", e.to_string()))?;
+            fs::remove_dir_all(&image_path).map_err(|e| DockerError::io_error("remove image dir", e.to_string()))?;
         }
         Ok(())
     }
@@ -176,8 +172,7 @@ impl StorageService {
         let volume_id = uuid::Uuid::new_v4().to_string();
         let volume_path = self.get_volume_path(&volume_id);
 
-        fs::create_dir_all(&volume_path)
-            .map_err(|e| DockerError::io_error("create volume dir", e.to_string()))?;
+        fs::create_dir_all(&volume_path).map_err(|e| DockerError::io_error("create volume dir", e.to_string()))?;
 
         Ok(docker_types::VolumeInfo {
             id: volume_id,
@@ -195,8 +190,7 @@ impl StorageService {
     pub async fn delete_volume(&self, volume_id: &str) -> Result<()> {
         let volume_path = self.get_volume_path(volume_id);
         if Path::new(&volume_path).exists() {
-            fs::remove_dir_all(&volume_path)
-                .map_err(|e| DockerError::io_error("remove volume dir", e.to_string()))?;
+            fs::remove_dir_all(&volume_path).map_err(|e| DockerError::io_error("remove volume dir", e.to_string()))?;
         }
         Ok(())
     }
@@ -220,12 +214,10 @@ impl StorageService {
         let container_path = self.get_container_path(container_id);
         let logs_path = format!("{}/logs", container_path);
 
-        fs::create_dir_all(&logs_path)
-            .map_err(|e| DockerError::io_error("create logs dir", e.to_string()))?;
+        fs::create_dir_all(&logs_path).map_err(|e| DockerError::io_error("create logs dir", e.to_string()))?;
 
         let log_file = format!("{}/container.log", logs_path);
-        fs::File::create(&log_file)
-            .map_err(|e| DockerError::io_error("create log file", e.to_string()))?;
+        fs::File::create(&log_file).map_err(|e| DockerError::io_error("create log file", e.to_string()))?;
 
         Ok(())
     }
@@ -242,8 +234,7 @@ impl StorageService {
             .map_err(|e| DockerError::io_error("open log file", e.to_string()))?;
 
         let log_entry = format!("[{:?}] {}\n", std::time::SystemTime::now(), message);
-        file.write_all(log_entry.as_bytes())
-            .map_err(|e| DockerError::io_error("write log", e.to_string()))?;
+        file.write_all(log_entry.as_bytes()).map_err(|e| DockerError::io_error("write log", e.to_string()))?;
 
         Ok(())
     }
@@ -257,8 +248,7 @@ impl StorageService {
             return Ok(vec![]);
         }
 
-        let content = fs::read_to_string(&log_file)
-            .map_err(|e| DockerError::io_error("read log file", e.to_string()))?;
+        let content = fs::read_to_string(&log_file).map_err(|e| DockerError::io_error("read log file", e.to_string()))?;
 
         let logs: Vec<String> = content.lines().map(|line| line.to_string()).collect();
 
@@ -270,11 +260,9 @@ impl StorageService {
         let container_path = self.get_container_path(container_id);
         let env_file = format!("{}/env.json", container_path);
 
-        let env_content = serde_json::to_string_pretty(env)
-            .map_err(|e| DockerError::json_error(e.to_string()))?;
+        let env_content = serde_json::to_string_pretty(env).map_err(|e| DockerError::json_error(e.to_string()))?;
 
-        fs::write(env_file, env_content)
-            .map_err(|e| DockerError::io_error("write env file", e.to_string()))?;
+        fs::write(env_file, env_content).map_err(|e| DockerError::io_error("write env file", e.to_string()))?;
 
         Ok(())
     }
@@ -288,8 +276,7 @@ impl StorageService {
             return Ok(std::collections::HashMap::new());
         }
 
-        let content = fs::read_to_string(&env_file)
-            .map_err(|e| DockerError::io_error("read env file", e.to_string()))?;
+        let content = fs::read_to_string(&env_file).map_err(|e| DockerError::io_error("read env file", e.to_string()))?;
 
         let env: std::collections::HashMap<String, String> =
             serde_json::from_str(&content).map_err(|e| DockerError::json_error(e.to_string()))?;
@@ -305,8 +292,7 @@ impl StorageService {
         let config_content =
             serde_json::to_string_pretty(config).map_err(|e| DockerError::io_error("write config", e.to_string()))?;
 
-        fs::write(config_file, config_content)
-            .map_err(|e| DockerError::io_error("write config file", e.to_string()))?;
+        fs::write(config_file, config_content).map_err(|e| DockerError::io_error("write config file", e.to_string()))?;
 
         Ok(())
     }
@@ -320,8 +306,7 @@ impl StorageService {
             return Err(DockerError::not_found("config", "Config file not found"));
         }
 
-        let content = fs::read_to_string(&config_file)
-            .map_err(|e| DockerError::io_error("read config file", e.to_string()))?;
+        let content = fs::read_to_string(&config_file).map_err(|e| DockerError::io_error("read config file", e.to_string()))?;
 
         let config: docker_types::ContainerConfig =
             serde_json::from_str(&content).map_err(|e| DockerError::json_error(e.to_string()))?;

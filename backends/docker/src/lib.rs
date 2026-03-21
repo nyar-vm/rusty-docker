@@ -26,7 +26,7 @@ use docker_types::{ContainerInfo, ImageInfo, NetworkConfigInfo, Result as Docker
 use futures_util::future::TryFutureExt;
 use runtime::ContainerRuntime;
 use storage::StorageService;
-use swarm::{init_swarm_manager, get_swarm_manager, SwarmManager};
+use swarm::{SwarmManager, get_swarm_manager, init_swarm_manager};
 use user::{Permission, Role, UserManager};
 
 /// 堆栈信息
@@ -67,7 +67,7 @@ impl RustyDocker {
         let runtime = Arc::new(ContainerRuntime::new(storage.clone())?);
         let network_manager = Arc::new(Mutex::new(new_network_manager()));
         let user_manager = Arc::new(UserManager::new());
-        
+
         // 初始化 Swarm 管理器
         init_swarm_manager();
         let swarm_manager = get_swarm_manager();
@@ -491,52 +491,52 @@ impl RustyDocker {
     pub async fn stack_deploy(&mut self, name: String, compose_file: String, prune: bool) -> DockerResult<StackInfo> {
         // 加载 Compose 文件
         let config = docker_types::compose::load_single_compose_file(&compose_file)?;
-        
+
         // 验证配置
         docker_types::compose::validate_compose_config(&config)?;
-        
+
         // 解析服务
         let services = docker_types::compose::parse_services(&config)?;
-        
+
         // 解析网络
         let networks = docker_types::compose::parse_networks(&config);
-        
+
         // 解析卷
         let volumes = docker_types::compose::parse_volumes(&config);
-        
+
         // 创建网络
         for network in &networks {
             let network_name = format!("{}_{}", name, network.name);
             let driver = network.driver.clone();
             let enable_ipv6 = network.enable_ipv6;
             let driver_opts = network.driver_opts.clone();
-            
+
             // 尝试创建网络，如果已存在则忽略
             let _ = self.create_network(network_name, driver, enable_ipv6, driver_opts).await;
         }
-        
+
         // 创建卷
         for volume in &volumes {
             let volume_name = format!("{}_{}", name, volume.name);
             let driver = volume.driver.clone();
             let labels = volume.labels.clone();
-            
+
             if !volume.external {
                 // 尝试创建卷，如果已存在则忽略
                 let _ = self.create_volume(volume_name, driver, labels).await;
             }
         }
-        
+
         // 创建服务
         let mut service_count = 0;
         let mut container_count = 0;
-        
+
         for service in &services {
             let service_name = format!("{}_{}", name, service.name);
             let image = service.image.clone();
             let ports = service.ports.clone();
             let replicas = service.deploy.as_ref().and_then(|d| d.replicas).unwrap_or(1);
-            
+
             // 构建环境变量
             let mut env = Vec::new();
             if let Some(env_map) = &service.environment_map {
@@ -545,30 +545,27 @@ impl RustyDocker {
                 }
             }
             env.extend(service.environment.clone());
-            
+
             // 构建卷挂载
             let mut mounts = Vec::new();
             for mount in &service.volumes {
-                let source = if mount.mount_type == "volume" {
-                    format!("{}_{}", name, mount.source)
-                } else {
-                    mount.source.clone()
-                };
+                let source =
+                    if mount.mount_type == "volume" { format!("{}_{}", name, mount.source) } else { mount.source.clone() };
                 mounts.push(format!("{}:{}{}", source, mount.target, if mount.read_only { ":ro" } else { "" }));
             }
-            
+
             // 创建服务
             let _ = self.create_service(service_name, image, ports, replicas, env, mounts).await;
-            
+
             service_count += 1;
             container_count += replicas;
         }
-        
+
         // 如果需要清理未使用的服务
         if prune {
             // 实现清理逻辑
         }
-        
+
         Ok(StackInfo {
             name,
             status: "running".to_string(),
@@ -582,22 +579,23 @@ impl RustyDocker {
     pub async fn stack_list(&self) -> DockerResult<Vec<StackInfo>> {
         // 获取所有服务
         let services = self.list_services().await?;
-        
+
         // 按堆栈名称分组
-        let mut stack_services: std::collections::HashMap<String, Vec<docker_types::ServiceInfo>> = std::collections::HashMap::new();
-        
+        let mut stack_services: std::collections::HashMap<String, Vec<docker_types::ServiceInfo>> =
+            std::collections::HashMap::new();
+
         for service in services {
             if let Some(stack_name) = service.name.split('_').next() {
                 stack_services.entry(stack_name.to_string()).or_default().push(service);
             }
         }
-        
+
         // 构建堆栈列表
         let mut stacks = Vec::new();
         for (stack_name, stack_service_list) in stack_services {
             let service_count = stack_service_list.len() as u32;
             let container_count = stack_service_list.iter().map(|s| s.replicas).sum();
-            
+
             stacks.push(StackInfo {
                 name: stack_name,
                 status: "running".to_string(),
@@ -606,7 +604,7 @@ impl RustyDocker {
                 created_at: std::time::SystemTime::now(),
             });
         }
-        
+
         Ok(stacks)
     }
 
@@ -614,10 +612,10 @@ impl RustyDocker {
     pub async fn stack_inspect(&self, stack: &str) -> DockerResult<StackInfo> {
         // 获取堆栈中的服务
         let services = self.stack_services(stack).await?;
-        
+
         let service_count = services.len() as u32;
         let container_count = services.iter().map(|s| s.replicas).sum();
-        
+
         Ok(StackInfo {
             name: stack.to_string(),
             status: "running".to_string(),
@@ -631,14 +629,14 @@ impl RustyDocker {
     pub async fn stack_rm(&mut self, stack: &str) -> DockerResult<()> {
         // 获取堆栈中的服务
         let services = self.stack_services(stack).await?;
-        
+
         // 删除服务
         for service in services {
             let _ = self.remove_service(&service.id).await;
         }
-        
+
         // 删除网络和卷（这里简化处理，实际需要更复杂的逻辑）
-        
+
         Ok(())
     }
 
@@ -646,13 +644,10 @@ impl RustyDocker {
     pub async fn stack_services(&self, stack: &str) -> DockerResult<Vec<docker_types::ServiceInfo>> {
         // 获取所有服务
         let services = self.list_services().await?;
-        
+
         // 过滤出属于该堆栈的服务
-        let stack_services = services
-            .into_iter()
-            .filter(|s| s.name.starts_with(&format!("{}_", stack)))
-            .collect();
-        
+        let stack_services = services.into_iter().filter(|s| s.name.starts_with(&format!("{}_", stack))).collect();
+
         Ok(stack_services)
     }
 
