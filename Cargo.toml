@@ -70,6 +70,7 @@ docker-network = { path = "backends/docker-network", version = "0.0.1" }
 docker-runtime = { path = "backends/docker-runtime", version = "0.0.1" }
 docker-registry = { path = "backends/docker-registry", version = "0.0.1", package = "docker-registry2"}
 docker-image = { path = "backends/docker-image", version = "0.0.1", package = "docker-image2"}
+docker-service = { path = "backends/docker-service", version = "0.0.1" }
 # Wae services
 wae-server = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
 wae-request = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
@@ -83,5 +84,5 @@ wae-event = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.
 wae-storage = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
 wae-types = { git = "https://github.com/oovm/wae", branch = "dev", version = "0.0.2" }
 # Oak parsers
-oak-dockerfile = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.7" }
-oak-yaml = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.7", features = ["serde"] }
+oak-dockerfile = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.8" }
+oak-yaml = { git = "https://github.com/ygg-lang/oaks", branch = "dev", version = "0.0.8", features = ["serde"] }

@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::{
     cgroup::CgroupManager,
     namespace::{NamespaceManager, NamespaceType},
+    oci::{OciRuntime, container_config_to_oci},
     storage::StorageService,
 };
 
@@ -36,6 +37,8 @@ pub struct ContainerRuntime {
     storage: Arc<StorageService>,
     /// 容器列表
     containers: Arc<RwLock<Vec<ContainerInfo>>>,
+    /// OCI 运行时
+    oci_runtime: OciRuntime,
 }
 
 impl ContainerRuntime {
@@ -43,11 +46,12 @@ impl ContainerRuntime {
     pub fn new(storage: Arc<StorageService>) -> Result<Self> {
         let namespace_manager = NamespaceManager::new()?;
         let cgroup_manager = CgroupManager::new()?;
+        let oci_runtime = OciRuntime::default();
 
         // 加载容器状态
         let containers = Arc::new(RwLock::new(Self::load_containers()?));
 
-        Ok(Self { namespace_manager, cgroup_manager, storage, containers })
+        Ok(Self { namespace_manager, cgroup_manager, storage, containers, oci_runtime })
     }
 
     /// 加载容器状态
@@ -238,17 +242,28 @@ impl ContainerRuntime {
             // 3. 准备容器文件系统
             self.storage.prepare_container_fs(container_id, &container.image)?;
 
-            // 4. 执行容器命令
-            // 这里使用 std::process 模拟容器进程
-            let command = &container.config.command[0];
-            let args = &container.config.command[1..];
-
-            let child = std::process::Command::new(command)
-                .args(args)
-                .spawn()
-                .map_err(|e| DockerError::io_error("spawn_process", e.to_string()))?;
-
-            let pid = child.id() as u32;
+            // 4. 准备 OCI 配置
+            let rootfs_path = format!("{}/rootfs", self.storage.get_container_path(container_id));
+            let oci_config = container_config_to_oci(&container.config, &rootfs_path);
+            
+            // 创建 bundle 目录
+            let bundle_path = format!("{}/bundle", self.storage.get_container_path(container_id));
+            std::fs::create_dir_all(&bundle_path).map_err(|e| DockerError::io_error("create_bundle_dir", e.to_string()))?;
+            
+            // 保存 OCI 配置文件
+            let config_path = format!("{}/config.json", bundle_path);
+            self.oci_runtime.save_config(&oci_config, &config_path)?;
+            
+            // 5. 使用 OCI 运行时创建和启动容器
+            self.oci_runtime.create(container_id, &config_path, &bundle_path)?;
+            self.oci_runtime.start(container_id)?;
+            
+            // 6. 获取容器状态
+            let state_output = self.oci_runtime.state(container_id)?;
+            let state: serde_json::Value = serde_json::from_str(&state_output).map_err(|e| DockerError::json_error(e.to_string()))?;
+            
+            // 提取 PID
+            let pid = state["pid"].as_u64().unwrap_or(0) as u32;
 
             // 4. 将进程添加到控制组
             self.cgroup_manager.add_process(container_id, pid)?;
@@ -296,28 +311,11 @@ impl ContainerRuntime {
                 return Err(DockerError::container_error("Container is not running".to_string()));
             }
 
-            // 1. 发送信号终止进程
-            if let Some(pid) = container.pid {
-                #[cfg(target_os = "linux")]
-                {
-                    // 尝试发送 SIGTERM 信号
-                    if let Err(e) = signal::kill(unistd::Pid::from_raw(pid as i32), signal::SIGTERM) {
-                        // 如果发送失败，尝试 SIGKILL
-                        signal::kill(unistd::Pid::from_raw(pid as i32), signal::SIGKILL).ok();
-                    }
-                }
-
-                #[cfg(not(target_os = "linux"))]
-                {
-                    // 在非 Linux 平台上，使用标准库终止进程
-                    if let Ok(process) = std::process::Command::new("taskkill").args(&["/F", "/PID", &pid.to_string()]).output()
-                    {
-                        if !process.status.success() {
-                            // 尝试其他方法
-                        }
-                    }
-                }
-            }
+            // 1. 使用 OCI 运行时停止容器
+            self.oci_runtime.stop(container_id, Some(10))?;
+            
+            // 2. 使用 OCI 运行时删除容器
+            self.oci_runtime.delete(container_id)?;
 
             // 2. 清理资源
             // 清理命名空间

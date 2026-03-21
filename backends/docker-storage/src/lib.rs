@@ -1,6 +1,9 @@
 #![warn(missing_docs)]
 
+pub mod overlay;
+
 use docker_types::DockerError;
+use overlay::{StorageDriver, OverlayDriver};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
@@ -9,17 +12,18 @@ pub type StorageResult<T> = std::result::Result<T, DockerError>;
 
 pub struct StorageManager {
     base_path: PathBuf,
+    storage_driver: Box<dyn StorageDriver>,
 }
 
 impl StorageManager {
     pub fn new() -> StorageResult<Self> {
         let base_path = Self::get_base_path()?;
-        Ok(Self { base_path })
+        let storage_driver = Box::new(OverlayDriver::default()?);
+        Ok(Self { base_path, storage_driver })
     }
 
     pub async fn ensure_directories(&self) -> StorageResult<()> {
-        let directories =
-            [&self.base_path, &self.containers_path()?, &self.images_path()?, &self.volumes_path()?, &self.tmp_path()?];
+        let directories = [&self.base_path, &self.containers_path()?, &self.images_path()?, &self.volumes_path()?, &self.tmp_path()?];
 
         for dir in directories {
             if !dir.exists() {
@@ -100,5 +104,30 @@ impl StorageManager {
             fs::remove_dir_all(path).await?;
         }
         Ok(())
+    }
+
+    /// 创建存储层
+    pub fn create_layer(&self, layer_id: &str, parent_id: Option<&str>) -> StorageResult<()> {
+        self.storage_driver.create_layer(layer_id, parent_id)
+    }
+
+    /// 挂载存储层
+    pub fn mount_layer(&self, layer_id: &str, mount_point: &Path) -> StorageResult<()> {
+        self.storage_driver.mount_layer(layer_id, mount_point)
+    }
+
+    /// 卸载存储层
+    pub fn unmount_layer(&self, mount_point: &Path) -> StorageResult<()> {
+        self.storage_driver.unmount_layer(mount_point)
+    }
+
+    /// 删除存储层
+    pub fn delete_layer(&self, layer_id: &str) -> StorageResult<()> {
+        self.storage_driver.delete_layer(layer_id)
+    }
+
+    /// 获取存储驱动
+    pub fn get_storage_driver(&self) -> &dyn StorageDriver {
+        &*self.storage_driver
     }
 }

@@ -1,140 +1,266 @@
-use super::{NetworkConfig, NetworkInfo, NetworkManager, Result};
+use super::{NetworkConfig, NetworkInfo, NetworkDriver, NetworkManager, Result, BridgeNetworkDriver};
 use docker_types::DockerError;
-use rand;
-use std::{collections::HashMap, sync::RwLock};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use async_trait::async_trait;
 
 pub struct WindowsNetworkManager {
-    networks: RwLock<HashMap<String, NetworkInfo>>,
+    networks: Arc<Mutex<HashMap<String, NetworkInfo>>>,
+    drivers: Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn NetworkDriver>>>>>>,
 }
 
 impl WindowsNetworkManager {
     pub fn new() -> Self {
-        Self { networks: RwLock::new(HashMap::new()) }
+        let mut manager = Self {
+            networks: Arc::new(Mutex::new(HashMap::new())),
+            drivers: Arc::new(Mutex::new(HashMap::new())),
+        };
+        
+        // Register default bridge driver
+        manager.register_driver("bridge", Box::new(BridgeNetworkDriver::new())).unwrap();
+        
+        manager
     }
 }
 
+#[async_trait]
 impl NetworkManager for WindowsNetworkManager {
-    fn create_network(
-        &mut self,
+    async fn create_network(
+        &self,
         config: &NetworkConfig,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
+    ) -> Result<NetworkInfo> {
         let config = config.clone();
-        Box::pin(async move {
-            // Generate a random network ID
-            let network_id = format!("{:x}", rand::random::<u64>());
-
-            // Create network info
-            let network_info = NetworkInfo {
-                id: network_id.clone(),
-                name: config.name,
-                driver: config.driver,
-                scope: "local".to_string(),
-                enable_ipv6: config.enable_ipv6,
-                internal: false,
-                attachable: true,
-                ingress: false,
-                containers: HashMap::new(),
-                options: config.options.unwrap_or_default(),
-                labels: HashMap::new(),
-            };
-
-            // Store network info
-            self.networks.write().unwrap().insert(network_id, network_info.clone());
-
-            Ok(network_info)
-        })
+        let driver_name = config.driver.clone();
+        let drivers = self.drivers.clone();
+        let networks = self.networks.clone();
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(&driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name.clone())
+            })?
+            .clone()
+        };
+        
+        // Create network using driver
+        let network_info = {
+            let mut driver_guard = driver.lock().await;
+            driver_guard.create_network(&config).await
+        }?;
+        
+        // Store network info
+        let mut networks_guard = networks.lock().await;
+        networks_guard.insert(network_info.id.clone(), network_info.clone());
+        
+        Ok(network_info)
     }
 
-    fn connect_container(
-        &mut self,
+    async fn connect_container(
+        &self,
         network_id: &str,
         container_id: &str,
         aliases: Option<Vec<String>>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+    ) -> Result<()> {
         let network_id = network_id.to_string();
         let container_id = container_id.to_string();
-        Box::pin(async move {
-            let mut networks = self.networks.write().unwrap();
-
-            if let Some(network) = networks.get_mut(&network_id) {
-                // Add container to network
-                let container_info = super::ContainerInfo {
-                    name: container_id.clone(),
-                    endpoint_id: format!("{:x}", rand::random::<u64>()),
-                    mac_address: format!(
-                        "02:42:{:02x}:{:02x}:{:02x}:{:02x}",
-                        rand::random::<u8>(),
-                        rand::random::<u8>(),
-                        rand::random::<u8>(),
-                        rand::random::<u8>()
-                    ),
-                    ipv4_address: format!("172.17.0.{}", rand::random::<u8>() % 254 + 2),
-                    ipv6_address: "".to_string(),
-                };
-
-                network.containers.insert(container_id, container_info);
-                Ok(())
-            }
-            else {
-                Err(DockerError::not_found("network", network_id))
-            }
-        })
+        let aliases = aliases;
+        let networks = self.networks.clone();
+        let drivers = self.drivers.clone();
+        
+        // Get driver name
+        let driver_name = {
+            let mut networks_guard = networks.lock().await;
+            let network = networks_guard.get(&network_id).ok_or_else(|| {
+                DockerError::not_found("network", network_id.clone())
+            })?;
+            network.driver.clone()
+        };
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(&driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name)
+            })?
+            .clone()
+        };
+        
+        // Connect container using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.connect_container(&network_id, &container_id, aliases).await
     }
 
-    fn disconnect_container(
-        &mut self,
+    async fn disconnect_container(
+        &self,
         network_id: &str,
         container_id: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+    ) -> Result<()> {
         let network_id = network_id.to_string();
         let container_id = container_id.to_string();
-        Box::pin(async move {
-            let mut networks = self.networks.write().unwrap();
-
-            if let Some(network) = networks.get_mut(&network_id) {
-                // Remove container from network
-                network.containers.remove(&container_id);
-                Ok(())
-            }
-            else {
-                Err(DockerError::not_found("network", network_id))
-            }
-        })
+        let networks = self.networks.clone();
+        let drivers = self.drivers.clone();
+        
+        // Get driver name
+        let driver_name = {
+            let mut networks_guard = networks.lock().await;
+            let network = networks_guard.get(&network_id).ok_or_else(|| {
+                DockerError::not_found("network", network_id.clone())
+            })?;
+            network.driver.clone()
+        };
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(&driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name)
+            })?
+            .clone()
+        };
+        
+        // Disconnect container using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.disconnect_container(&network_id, &container_id).await
     }
 
-    fn remove_network(
-        &mut self,
+    async fn add_port_mapping(
+        &self,
+        container_id: &str,
+        container_ip: &str,
+        port_mapping: &super::PortMapping,
+    ) -> Result<()> {
+        // 默认使用 bridge 驱动
+        let driver_name = "bridge";
+        let drivers = self.drivers.clone();
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name.to_string())
+            })?
+            .clone()
+        };
+        
+        // Add port mapping using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.add_port_mapping(container_id, container_ip, port_mapping).await
+    }
+
+    async fn remove_port_mapping(
+        &self,
+        port_mapping: &super::PortMapping,
+    ) -> Result<()> {
+        // 默认使用 bridge 驱动
+        let driver_name = "bridge";
+        let drivers = self.drivers.clone();
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name.to_string())
+            })?
+            .clone()
+        };
+        
+        // Remove port mapping using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.remove_port_mapping(port_mapping).await
+    }
+
+    async fn remove_network(
+        &self,
         network_id: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+    ) -> Result<()> {
         let network_id = network_id.to_string();
-        Box::pin(async move {
-            let mut networks = self.networks.write().unwrap();
-
-            if networks.remove(&network_id).is_some() { Ok(()) } else { Err(DockerError::not_found("network", network_id)) }
-        })
+        let networks = self.networks.clone();
+        let drivers = self.drivers.clone();
+        
+        // Get driver name
+        let driver_name = {
+            let mut networks_guard = networks.lock().await;
+            let network = networks_guard.get(&network_id).ok_or_else(|| {
+                DockerError::not_found("network", network_id.clone())
+            })?;
+            network.driver.clone()
+        };
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(&driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name)
+            })?
+            .clone()
+        };
+        
+        // Remove network using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.remove_network(&network_id).await?;
+        
+        // Remove from networks map
+        let mut networks_guard = networks.lock().await;
+        networks_guard.remove(&network_id);
+        
+        Ok(())
     }
 
-    fn list_networks(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<NetworkInfo>>> + Send + '_>> {
-        Box::pin(async move {
-            let networks = self.networks.read().unwrap();
-            Ok(networks.values().cloned().collect())
-        })
+    async fn list_networks(&self) -> Result<Vec<NetworkInfo>> {
+        let networks = self.networks.clone();
+        let networks_guard = networks.lock().await;
+        Ok(networks_guard.values().cloned().collect())
     }
 
-    fn inspect_network(
-        &mut self,
+    async fn inspect_network(
+        &self,
         network_id: &str,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<NetworkInfo>> + Send + '_>> {
+    ) -> Result<NetworkInfo> {
         let network_id = network_id.to_string();
-        Box::pin(async move {
-            let networks = self.networks.read().unwrap();
+        let networks = self.networks.clone();
+        let drivers = self.drivers.clone();
+        
+        // Get driver name
+        let driver_name = {
+            let mut networks_guard = networks.lock().await;
+            let network = networks_guard.get(&network_id).ok_or_else(|| {
+                DockerError::not_found("network", network_id.clone())
+            })?;
+            network.driver.clone()
+        };
+        
+        // Get driver
+        let driver = {
+            let mut drivers_guard = drivers.lock().await;
+            drivers_guard.get(&driver_name).ok_or_else(|| {
+                DockerError::not_found("network driver", driver_name)
+            })?
+            .clone()
+        };
+        
+        // Inspect network using driver
+        let mut driver_guard = driver.lock().await;
+        driver_guard.inspect_network(&network_id).await
+    }
 
-            if let Some(network) = networks.get(&network_id) {
-                Ok(network.clone())
-            }
-            else {
-                Err(DockerError::not_found("network", network_id))
-            }
+    fn register_driver(
+        &self,
+        name: &str,
+        driver: Box<dyn NetworkDriver>,
+    ) -> Result<()> {
+        tokio::runtime::Handle::current().block_on(async {
+            let mut drivers = self.drivers.lock().await;
+            drivers.insert(name.to_string(), Arc::new(Mutex::new(driver)));
+            Ok(())
+        })
+    }
+
+    fn get_driver(&self, name: &str) -> Option<Arc<Mutex<Box<dyn NetworkDriver>>>> {
+        tokio::runtime::Handle::current().block_on(async {
+            let drivers = self.drivers.lock().await;
+            drivers.get(name).cloned()
         })
     }
 }

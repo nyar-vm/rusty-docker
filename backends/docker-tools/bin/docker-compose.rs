@@ -1,9 +1,9 @@
 use clap::{Parser, Subcommand};
 use docker::Docker;
+use docker_types::compose;
 use docker_types::{DockerError, Result};
-use oak_yaml::parse;
 use retry::{delay::Exponential, retry};
-use std::{collections::HashMap, fs::File, io::Read, path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -359,371 +359,26 @@ enum StackCommands {
     },
 }
 
-#[derive(Clone)]
-struct ComposeService {
-    name: String,
-    image: String,
-    build: Option<String>,
-    ports: Vec<String>,
-    environment: Vec<String>,
-    environment_map: Option<std::collections::HashMap<String, String>>,
-    env_file: Option<Vec<String>>,
-    volumes: Vec<MountConfig>,
-    command: Option<String>,
-    working_dir: Option<String>,
-    user: Option<String>,
-    entrypoint: Option<String>,
-    restart: Option<String>,
-    healthcheck: Option<HealthCheckConfig>,
-    deploy: Option<DeployConfig>,
-    labels: Option<Vec<String>>,
-    network_mode: Option<String>,
-    networks: std::collections::HashMap<String, NetworkServiceConfig>,
-    depends_on: Vec<String>,
-    // 新增配置选项
-    cap_add: Option<Vec<String>>,
-    cap_drop: Option<Vec<String>>,
-    cgroup_parent: Option<String>,
-    device_cgroup_rules: Option<Vec<String>>,
-    devices: Option<Vec<String>>,
-    dns: Option<Vec<String>>,
-    dns_search: Option<Vec<String>>,
-    domainname: Option<String>,
-    extra_hosts: Option<Vec<String>>,
-    hostname: Option<String>,
-    ipc: Option<String>,
-    isolation: Option<String>,
-    logging: Option<LoggingConfig>,
-    mac_address: Option<String>,
-    mem_limit: Option<String>,
-    mem_reservation: Option<String>,
-    oom_kill_disable: Option<bool>,
-    oom_score_adj: Option<i32>,
-    pid: Option<String>,
-    pids_limit: Option<u64>,
-    read_only: Option<bool>,
-    shm_size: Option<String>,
-    stdin_open: Option<bool>,
-    stop_grace_period: Option<String>,
-    stop_signal: Option<String>,
-    tty: Option<bool>,
-    ulimits: Option<std::collections::HashMap<String, UlimitConfig>>,
-    sysctls: Option<std::collections::HashMap<String, String>>,
-    // Profiles 支持
-    profiles: Option<Vec<String>>,
-    // Extends 支持
-    extends: Option<ExtendsConfig>,
-}
-
-#[derive(Clone)]
-struct NetworkServiceConfig {
-    aliases: Vec<String>,
-    ipv4_address: Option<String>,
-    ipv6_address: Option<String>,
-}
-
-#[derive(Clone)]
-struct HealthCheckConfig {
-    test: Vec<String>,
-    interval: Option<String>,
-    timeout: Option<String>,
-    retries: Option<u32>,
-    start_period: Option<String>,
-}
-
-#[derive(Clone)]
-struct DeployConfig {
-    replicas: Option<u32>,
-    restart_policy: Option<RestartPolicyConfig>,
-    resources: Option<ResourcesConfig>,
-    labels: Option<Vec<String>>,
-}
-
-#[derive(Clone)]
-struct RestartPolicyConfig {
-    condition: Option<String>,
-    delay: Option<String>,
-    max_attempts: Option<u32>,
-    window: Option<String>,
-}
-
-#[derive(Clone)]
-struct ResourcesConfig {
-    limits: Option<ResourceLimits>,
-    reservations: Option<ResourceReservations>,
-}
-
-#[derive(Clone)]
-struct ResourceLimits {
-    cpus: Option<String>,
-    memory: Option<String>,
-}
-
-#[derive(Clone)]
-struct ResourceReservations {
-    cpus: Option<String>,
-    memory: Option<String>,
-}
-
-struct NetworkConfig {
-    name: String,
-    driver: String,
-    driver_opts: Option<std::collections::HashMap<String, String>>,
-    ipam: Option<IpamConfig>,
-    internal: bool,
-    external: bool,
-    attachable: bool,
-    enable_ipv6: bool,
-    labels: Option<std::collections::HashMap<String, String>>,
-}
-
-struct IpamConfig {
-    driver: String,
-    config: Vec<IpamSubnetConfig>,
-}
-
-struct IpamSubnetConfig {
-    subnet: String,
-    gateway: Option<String>,
-    ip_range: Option<String>,
-}
-
-struct VolumeConfig {
-    name: String,
-    driver: String,
-    driver_opts: Option<std::collections::HashMap<String, String>>,
-    labels: Option<std::collections::HashMap<String, String>>,
-    external: bool,
-    internal: bool,
-}
-
-#[derive(Clone)]
-struct MountConfig {
-    source: String,
-    target: String,
-    read_only: bool,
-    mount_type: String,          // volume, bind, tmpfs
-    consistency: Option<String>, // for bind mounts
-    tmpfs_size: Option<u64>,     // for tmpfs mounts
-    tmpfs_mode: Option<u32>,     // for tmpfs mounts
-}
-
-#[derive(Clone)]
-struct LoggingConfig {
-    driver: String,
-    options: Option<std::collections::HashMap<String, String>>,
-}
-
-#[derive(Clone)]
-struct UlimitConfig {
-    soft: Option<u64>,
-    hard: Option<u64>,
-}
-
-#[derive(Clone)]
-struct ExtendsConfig {
-    service: String,
-    file: Option<String>,
-}
-
-/// 加载 .env 文件中的环境变量
-fn load_env_file() -> HashMap<String, String> {
-    let mut env_vars = HashMap::new();
-
-    // 检查 .env 文件是否存在
-    if Path::new(".env").exists() {
-        if let Ok(mut file) = File::open(".env") {
-            let mut content = String::new();
-            if file.read_to_string(&mut content).is_ok() {
-                for line in content.lines() {
-                    // 跳过注释和空行
-                    if line.trim().starts_with('#') || line.trim().is_empty() {
-                        continue;
-                    }
-
-                    // 解析键值对
-                    if let Some((key, value)) = line.split_once('=') {
-                        env_vars.insert(key.trim().to_string(), value.trim().to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    env_vars
-}
-
-/// 替换字符串中的环境变量
-fn replace_env_vars(s: &str, env_vars: &HashMap<String, String>) -> String {
-    let mut result = s.to_string();
-
-    // 简单的环境变量替换，格式为 ${VAR} 或 $VAR
-    for (key, value) in env_vars {
-        let placeholder1 = format!("${{{}}}", key);
-        let placeholder2 = format!("${}", key);
-
-        result = result.replace(&placeholder1, value);
-        result = result.replace(&placeholder2, value);
-    }
-
-    result
-}
-
-impl ComposeService {
-    fn default(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            image: "nginx:latest".to_string(),
-            build: None,
-            ports: vec!["80:80".to_string()],
-            environment: vec![],
-            environment_map: None,
-            env_file: None,
-            volumes: vec![],
-            command: None,
-            working_dir: None,
-            user: None,
-            entrypoint: None,
-            restart: None,
-            healthcheck: None,
-            deploy: None,
-            labels: None,
-            network_mode: None,
-            networks: std::collections::HashMap::new(),
-            depends_on: vec![],
-            // 新增配置选项
-            cap_add: None,
-            cap_drop: None,
-            cgroup_parent: None,
-            device_cgroup_rules: None,
-            devices: None,
-            dns: None,
-            dns_search: None,
-            domainname: None,
-            extra_hosts: None,
-            hostname: None,
-            ipc: None,
-            isolation: None,
-            logging: None,
-            mac_address: None,
-            mem_limit: None,
-            mem_reservation: None,
-            oom_kill_disable: None,
-            oom_score_adj: None,
-            pid: None,
-            pids_limit: None,
-            read_only: None,
-            shm_size: None,
-            stdin_open: None,
-            stop_grace_period: None,
-            stop_signal: None,
-            tty: None,
-            ulimits: None,
-            sysctls: None,
-            profiles: None,
-            extends: None,
-        }
-    }
-}
-
-/// 加载单个 Compose 文件
-fn load_single_compose_file(path: &str) -> Result<()> {
-    // 加载环境变量
-    let _env_vars = load_env_file();
-
-    // 检查文件是否存在
-    if !Path::new(path).exists() {
-        return Err(DockerError::io_error("open file", format!("File not found: {}", path)));
-    }
-
-    // 读取文件内容
-    let mut file = File::open(path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-
-    // 使用 oak-yaml 解析 YAML
-    match parse(&content) {
-        Ok(root) => {
-            // 解析成功，这里可以添加进一步的处理逻辑
-            info!("Successfully parsed compose file: {}", path);
-            Ok(())
-        }
-        Err(e) => Err(DockerError::invalid_params("compose_file", format!("Failed to parse compose file: {}", e))),
-    }
-}
-
-/// 合并多个 Compose 文件
-fn merge_compose_files(_paths: &[String]) -> Result<()> {
-    // Mock 实现，直接返回成功
-    Ok(())
-}
-
-/// 验证 Compose 配置文件
-fn validate_compose_config() -> Result<()> {
-    // Mock 实现，直接返回成功
-    Ok(())
-}
-
-/// 加载并合并多个 Compose 文件
-fn load_compose_files(paths: &[String]) -> Result<()> {
-    if paths.is_empty() {
-        return Err(DockerError::invalid_params("compose_files", "No compose files specified"));
-    }
-
-    // 加载第一个文件作为基础
-    load_single_compose_file(&paths[0])?;
-    info!("Loaded base compose file: {}", paths[0]);
-
-    // 依次合并其他文件
-    for path in &paths[1..] {
-        load_single_compose_file(path)?;
-        info!("Merged compose file: {}", path);
-    }
-
-    // 检查是否存在 override 文件
-    let override_path = "docker-compose.override.yml";
-    if Path::new(override_path).exists() && !paths.contains(&override_path.to_string()) {
-        info!("Found override file: {}", override_path);
-        load_single_compose_file(override_path)?;
-        info!("Merged override file: {}", override_path);
-    }
-
-    // 验证合并后的配置
-    validate_compose_config()?;
-    info!("Compose configuration validated successfully");
-
-    Ok(())
-}
-
-/// 从合并后的配置中解析服务、网络和卷
-fn parse_compose_config() -> (Vec<ComposeService>, Vec<NetworkConfig>, Vec<VolumeConfig>) {
-    // Mock 实现，返回默认值
-    let services = vec![ComposeService::default("web"), ComposeService::default("db")];
-
-    let networks = vec![NetworkConfig {
-        name: "default".to_string(),
-        driver: "bridge".to_string(),
-        driver_opts: None,
-        ipam: None,
-        internal: false,
-        external: false,
-        attachable: false,
-        enable_ipv6: false,
-        labels: None,
-    }];
-
-    let volumes = vec![];
-
-    (services, networks, volumes)
-}
-
-fn load_compose_file(paths: &[String]) -> Result<(Vec<ComposeService>, Vec<NetworkConfig>, Vec<VolumeConfig>)> {
-    load_compose_files(paths)?;
-
+/// 加载并解析 Compose 文件
+fn load_compose_file(paths: &[String]) -> Result<(Vec<compose::compose::ComposeService>, Vec<compose::compose::NetworkConfig>, Vec<compose::compose::VolumeConfig>)> {
+    // 合并多个 Compose 文件
+    let merged_config = compose::merge_compose_files(paths)?;
+    
+    // 验证配置
+    compose::validate_compose_config(&merged_config)?;
+    
+    // 解析服务
+    let services = compose::parse_services(&merged_config)?;
+    
+    // 解析网络
+    let networks = compose::parse_networks(&merged_config);
+    
+    // 解析卷
+    let volumes = compose::parse_volumes(&merged_config);
+    
     // 检查 Compose 文件版本
     info!("Compose file version: 3");
-
-    let (services, networks, volumes) = parse_compose_config();
+    
     Ok((services, networks, volumes))
 }
 
@@ -820,7 +475,7 @@ async fn main() -> Result<()> {
             let original_services = services.clone();
 
             // 构建服务依赖图
-            let mut service_map: std::collections::HashMap<String, ComposeService> =
+            let mut service_map: std::collections::HashMap<String, compose::ComposeService> =
                 services.into_iter().map(|s| (s.name.clone(), s)).collect();
             let mut started_services: std::collections::HashSet<String> = std::collections::HashSet::new();
             let mut healthy_services: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -863,7 +518,7 @@ async fn main() -> Result<()> {
                 }
 
                 // 收集需要启动的服务信息
-                let mut services_to_start: Vec<ComposeService> = Vec::new();
+                let mut services_to_start: Vec<compose::ComposeService> = Vec::new();
                 for service_name in &can_start {
                     if let Some(service) = service_map.remove(service_name) {
                         services_to_start.push(service);
@@ -1610,7 +1265,7 @@ async fn main() -> Result<()> {
             }
 
             // 构建服务依赖图
-            let mut service_map: std::collections::HashMap<String, ComposeService> =
+            let mut service_map: std::collections::HashMap<String, compose::ComposeService> =
                 services.into_iter().map(|s| (s.name.clone(), s)).collect();
             let mut created_services: std::collections::HashSet<String> = std::collections::HashSet::new();
             let mut to_create: Vec<String> = service_map.keys().cloned().collect();
@@ -1639,7 +1294,7 @@ async fn main() -> Result<()> {
                 }
 
                 // 收集需要创建的服务信息
-                let mut services_to_create: Vec<ComposeService> = Vec::new();
+                let mut services_to_create: Vec<compose::ComposeService> = Vec::new();
                 for service_name in &can_create {
                     if let Some(service) = service_map.remove(service_name) {
                         services_to_create.push(service);

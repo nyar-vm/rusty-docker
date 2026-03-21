@@ -13,8 +13,10 @@ pub mod cgroup;
 pub mod error;
 pub mod models;
 pub mod namespace;
+pub mod oci;
 pub mod runtime;
 pub mod storage;
+pub mod swarm;
 pub mod user;
 
 use std::sync::{Arc, Mutex};
@@ -24,6 +26,7 @@ use docker_types::{ContainerInfo, ImageInfo, NetworkConfigInfo, Result as Docker
 use futures_util::future::TryFutureExt;
 use runtime::ContainerRuntime;
 use storage::StorageService;
+use swarm::{init_swarm_manager, get_swarm_manager, SwarmManager};
 use user::{Permission, Role, UserManager};
 
 /// 堆栈信息
@@ -50,6 +53,8 @@ pub struct RustyDocker {
     network_manager: Arc<Mutex<Box<dyn NetworkManager>>>,
     /// 用户管理器
     user_manager: Arc<UserManager>,
+    /// Swarm 管理器
+    swarm_manager: Arc<SwarmManager>,
 }
 
 /// Docker 服务别名
@@ -62,8 +67,12 @@ impl RustyDocker {
         let runtime = Arc::new(ContainerRuntime::new(storage.clone())?);
         let network_manager = Arc::new(Mutex::new(new_network_manager()));
         let user_manager = Arc::new(UserManager::new());
+        
+        // 初始化 Swarm 管理器
+        init_swarm_manager();
+        let swarm_manager = get_swarm_manager();
 
-        Ok(Self { runtime, storage, network_manager, user_manager })
+        Ok(Self { runtime, storage, network_manager, user_manager, swarm_manager })
     }
 
     /// 启动服务
@@ -269,6 +278,7 @@ impl RustyDocker {
             storage: self.storage.clone(),
             network_manager: self.network_manager.clone(),
             user_manager: self.user_manager.clone(),
+            swarm_manager: self.swarm_manager.clone(),
         }
     }
 
@@ -363,8 +373,7 @@ impl RustyDocker {
         force_new_cluster: bool,
         subnet_size: u8,
     ) -> DockerResult<()> {
-        // 模拟 Swarm 初始化
-        Ok(())
+        self.swarm_manager.init(advertise_addr, auto_lock, default_addr_pool, force_new_cluster, subnet_size).await
     }
 
     /// 加入 Swarm 集群
@@ -375,29 +384,17 @@ impl RustyDocker {
         listen_addr: Option<String>,
         manager_addr: Option<String>,
     ) -> DockerResult<()> {
-        // 模拟 Swarm 加入
-        Ok(())
+        self.swarm_manager.join(token, advertise_addr, listen_addr, manager_addr).await
     }
 
     /// 离开 Swarm 集群
     pub async fn swarm_leave(&mut self, force: bool) -> DockerResult<()> {
-        // 模拟 Swarm 离开
-        Ok(())
+        self.swarm_manager.leave(force).await
     }
 
     /// 获取 Swarm 集群信息
     pub async fn swarm_info(&self) -> DockerResult<docker_types::SwarmInfo> {
-        // 模拟 Swarm 集群信息
-        Ok(docker_types::SwarmInfo {
-            id: "swarm-1234567890".to_string(),
-            name: Some("my-swarm".to_string()),
-            managers: 1,
-            workers: 2,
-            services: 3,
-            tasks: 9,
-            version: "1.29.0".to_string(),
-            created_at: std::time::SystemTime::now(),
-        })
+        self.swarm_manager.info().await
     }
 
     /// 更新 Swarm 集群配置
@@ -407,8 +404,7 @@ impl RustyDocker {
         default_addr_pool: Option<String>,
         subnet_size: Option<u8>,
     ) -> DockerResult<()> {
-        // 模拟 Swarm 更新
-        Ok(())
+        self.swarm_manager.update(auto_lock, default_addr_pool, subnet_size).await
     }
 
     /// 创建 Swarm 服务
@@ -421,85 +417,17 @@ impl RustyDocker {
         env: Vec<String>,
         mount: Vec<String>,
     ) -> DockerResult<docker_types::ServiceInfo> {
-        // 解析端口映射
-        let mut ports = std::collections::HashMap::new();
-        for port in publish {
-            if let Some((host, container)) = port.split_once(":") {
-                if let (Ok(host_port), Ok(container_port)) = (host.parse::<u16>(), container.parse::<u16>()) {
-                    ports.insert(host_port, container_port);
-                }
-            }
-        }
-
-        // 解析环境变量
-        let mut environment = std::collections::HashMap::new();
-        for env_var in env {
-            if let Some((key, value)) = env_var.split_once("=") {
-                environment.insert(key.to_string(), value.to_string());
-            }
-        }
-
-        // 模拟创建服务
-        Ok(docker_types::ServiceInfo {
-            id: format!("service-{}", uuid::Uuid::new_v4()),
-            name,
-            status: docker_types::ServiceStatus::Running,
-            image,
-            replicas,
-            ports,
-            environment,
-            volumes: vec![],
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        })
+        self.swarm_manager.create_service(name, image, publish, replicas, env, mount).await
     }
 
     /// 列出 Swarm 服务
     pub async fn list_services(&self) -> DockerResult<Vec<docker_types::ServiceInfo>> {
-        // 模拟服务列表
-        Ok(vec![
-            docker_types::ServiceInfo {
-                id: "service-1".to_string(),
-                name: "web".to_string(),
-                status: docker_types::ServiceStatus::Running,
-                image: "nginx:latest".to_string(),
-                replicas: 3,
-                ports: std::collections::HashMap::from([(80, 80)]),
-                environment: std::collections::HashMap::new(),
-                volumes: vec![],
-                created_at: std::time::SystemTime::now(),
-                updated_at: std::time::SystemTime::now(),
-            },
-            docker_types::ServiceInfo {
-                id: "service-2".to_string(),
-                name: "db".to_string(),
-                status: docker_types::ServiceStatus::Running,
-                image: "postgres:latest".to_string(),
-                replicas: 1,
-                ports: std::collections::HashMap::from([(5432, 5432)]),
-                environment: std::collections::HashMap::from([("POSTGRES_PASSWORD".to_string(), "secret".to_string())]),
-                volumes: vec![],
-                created_at: std::time::SystemTime::now(),
-                updated_at: std::time::SystemTime::now(),
-            },
-        ])
+        self.swarm_manager.list_services().await
     }
 
     /// 查看 Swarm 服务详情
     pub async fn inspect_service(&self, service: &str) -> DockerResult<docker_types::ServiceInfo> {
-        // 模拟服务详情
-        Ok(docker_types::ServiceInfo {
-            id: service.to_string(),
-            name: "web".to_string(),
-            status: docker_types::ServiceStatus::Running,
-            image: "nginx:latest".to_string(),
-            replicas: 3,
-            ports: std::collections::HashMap::from([(80, 80)]),
-            environment: std::collections::HashMap::new(),
-            volumes: vec![],
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        })
+        self.swarm_manager.inspect_service(service).await
     }
 
     /// 更新 Swarm 服务
@@ -509,87 +437,27 @@ impl RustyDocker {
         image: Option<String>,
         replicas: Option<u32>,
     ) -> DockerResult<docker_types::ServiceInfo> {
-        // 模拟服务更新
-        Ok(docker_types::ServiceInfo {
-            id: service.to_string(),
-            name: "web".to_string(),
-            status: docker_types::ServiceStatus::Updating,
-            image: image.unwrap_or("nginx:latest".to_string()),
-            replicas: replicas.unwrap_or(3),
-            ports: std::collections::HashMap::from([(80, 80)]),
-            environment: std::collections::HashMap::new(),
-            volumes: vec![],
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        })
+        self.swarm_manager.update_service(service, image, replicas).await
     }
 
     /// 删除 Swarm 服务
     pub async fn remove_service(&mut self, service: &str) -> DockerResult<()> {
-        // 模拟服务删除
-        Ok(())
+        self.swarm_manager.remove_service(service).await
     }
 
     /// 扩缩容 Swarm 服务
     pub async fn scale_service(&mut self, service: &str, replicas: u32) -> DockerResult<docker_types::ServiceInfo> {
-        // 模拟服务扩缩容
-        Ok(docker_types::ServiceInfo {
-            id: service.to_string(),
-            name: "web".to_string(),
-            status: docker_types::ServiceStatus::Updating,
-            image: "nginx:latest".to_string(),
-            replicas,
-            ports: std::collections::HashMap::from([(80, 80)]),
-            environment: std::collections::HashMap::new(),
-            volumes: vec![],
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        })
+        self.swarm_manager.scale_service(service, replicas).await
     }
 
     /// 列出 Swarm 节点
     pub async fn list_nodes(&self) -> DockerResult<Vec<docker_types::NodeInfo>> {
-        // 模拟节点列表
-        Ok(vec![
-            docker_types::NodeInfo {
-                id: "node-1".to_string(),
-                name: "manager1".to_string(),
-                role: docker_types::NodeRole::Manager,
-                availability: docker_types::NodeAvailability::Active,
-                status: docker_types::NodeStatus::Ready,
-                address: "192.168.1.100:2377".to_string(),
-                version: "1.29.0".to_string(),
-                containers_running: 5,
-                labels: std::collections::HashMap::new(),
-            },
-            docker_types::NodeInfo {
-                id: "node-2".to_string(),
-                name: "worker1".to_string(),
-                role: docker_types::NodeRole::Worker,
-                availability: docker_types::NodeAvailability::Active,
-                status: docker_types::NodeStatus::Ready,
-                address: "192.168.1.101:2377".to_string(),
-                version: "1.29.0".to_string(),
-                containers_running: 3,
-                labels: std::collections::HashMap::new(),
-            },
-        ])
+        self.swarm_manager.list_nodes().await
     }
 
     /// 查看 Swarm 节点详情
     pub async fn inspect_node(&self, node: &str) -> DockerResult<docker_types::NodeInfo> {
-        // 模拟节点详情
-        Ok(docker_types::NodeInfo {
-            id: node.to_string(),
-            name: "manager1".to_string(),
-            role: docker_types::NodeRole::Manager,
-            availability: docker_types::NodeAvailability::Active,
-            status: docker_types::NodeStatus::Ready,
-            address: "192.168.1.100:2377".to_string(),
-            version: "1.29.0".to_string(),
-            containers_running: 5,
-            labels: std::collections::HashMap::new(),
-        })
+        self.swarm_manager.inspect_node(node).await
     }
 
     /// 更新 Swarm 节点
@@ -599,130 +467,193 @@ impl RustyDocker {
         role: Option<String>,
         availability: Option<String>,
     ) -> DockerResult<docker_types::NodeInfo> {
-        // 模拟节点更新
-        Ok(docker_types::NodeInfo {
-            id: node.to_string(),
-            name: "worker1".to_string(),
-            role: if role.as_deref() == Some("manager") {
-                docker_types::NodeRole::Manager
-            }
-            else {
-                docker_types::NodeRole::Worker
-            },
-            availability: match availability.as_deref() {
-                Some("active") => docker_types::NodeAvailability::Active,
-                Some("pause") => docker_types::NodeAvailability::Pause,
-                Some("drain") => docker_types::NodeAvailability::Drain,
-                _ => docker_types::NodeAvailability::Active,
-            },
-            status: docker_types::NodeStatus::Ready,
-            address: "192.168.1.101:2377".to_string(),
-            version: "1.29.0".to_string(),
-            containers_running: 3,
-            labels: std::collections::HashMap::new(),
-        })
+        self.swarm_manager.update_node(node, role, availability).await
     }
 
     /// 提升 Swarm 节点为 manager
     pub async fn promote_node(&mut self, node: &str) -> DockerResult<()> {
-        // 模拟节点提升
-        Ok(())
+        self.swarm_manager.promote_node(node).await
     }
 
     /// 降级 Swarm 节点为 worker
     pub async fn demote_node(&mut self, node: &str) -> DockerResult<()> {
-        // 模拟节点降级
-        Ok(())
+        self.swarm_manager.demote_node(node).await
     }
 
     /// 删除 Swarm 节点
     pub async fn remove_node(&mut self, node: &str) -> DockerResult<()> {
-        // 模拟节点删除
-        Ok(())
+        self.swarm_manager.remove_node(node).await
     }
 
     // 堆栈管理相关方法
 
     /// 创建堆栈
     pub async fn stack_deploy(&mut self, name: String, compose_file: String, prune: bool) -> DockerResult<StackInfo> {
-        // 模拟堆栈部署
+        // 加载 Compose 文件
+        let config = docker_types::compose::load_single_compose_file(&compose_file)?;
+        
+        // 验证配置
+        docker_types::compose::validate_compose_config(&config)?;
+        
+        // 解析服务
+        let services = docker_types::compose::parse_services(&config)?;
+        
+        // 解析网络
+        let networks = docker_types::compose::parse_networks(&config);
+        
+        // 解析卷
+        let volumes = docker_types::compose::parse_volumes(&config);
+        
+        // 创建网络
+        for network in &networks {
+            let network_name = format!("{}_{}", name, network.name);
+            let driver = network.driver.clone();
+            let enable_ipv6 = network.enable_ipv6;
+            let driver_opts = network.driver_opts.clone();
+            
+            // 尝试创建网络，如果已存在则忽略
+            let _ = self.create_network(network_name, driver, enable_ipv6, driver_opts).await;
+        }
+        
+        // 创建卷
+        for volume in &volumes {
+            let volume_name = format!("{}_{}", name, volume.name);
+            let driver = volume.driver.clone();
+            let labels = volume.labels.clone();
+            
+            if !volume.external {
+                // 尝试创建卷，如果已存在则忽略
+                let _ = self.create_volume(volume_name, driver, labels).await;
+            }
+        }
+        
+        // 创建服务
+        let mut service_count = 0;
+        let mut container_count = 0;
+        
+        for service in &services {
+            let service_name = format!("{}_{}", name, service.name);
+            let image = service.image.clone();
+            let ports = service.ports.clone();
+            let replicas = service.deploy.as_ref().and_then(|d| d.replicas).unwrap_or(1);
+            
+            // 构建环境变量
+            let mut env = Vec::new();
+            if let Some(env_map) = &service.environment_map {
+                for (key, value) in env_map {
+                    env.push(format!("{}={}", key, value));
+                }
+            }
+            env.extend(service.environment.clone());
+            
+            // 构建卷挂载
+            let mut mounts = Vec::new();
+            for mount in &service.volumes {
+                let source = if mount.mount_type == "volume" {
+                    format!("{}_{}", name, mount.source)
+                } else {
+                    mount.source.clone()
+                };
+                mounts.push(format!("{}:{}{}", source, mount.target, if mount.read_only { ":ro" } else { "" }));
+            }
+            
+            // 创建服务
+            let _ = self.create_service(service_name, image, ports, replicas, env, mounts).await;
+            
+            service_count += 1;
+            container_count += replicas;
+        }
+        
+        // 如果需要清理未使用的服务
+        if prune {
+            // 实现清理逻辑
+        }
+        
         Ok(StackInfo {
             name,
             status: "running".to_string(),
-            services: 3,
-            containers: 3,
+            services: service_count,
+            containers: container_count,
             created_at: std::time::SystemTime::now(),
         })
     }
 
     /// 列出堆栈
     pub async fn stack_list(&self) -> DockerResult<Vec<StackInfo>> {
-        // 模拟堆栈列表
-        Ok(vec![
-            StackInfo {
-                name: "my-stack".to_string(),
+        // 获取所有服务
+        let services = self.list_services().await?;
+        
+        // 按堆栈名称分组
+        let mut stack_services: std::collections::HashMap<String, Vec<docker_types::ServiceInfo>> = std::collections::HashMap::new();
+        
+        for service in services {
+            if let Some(stack_name) = service.name.split('_').next() {
+                stack_services.entry(stack_name.to_string()).or_default().push(service);
+            }
+        }
+        
+        // 构建堆栈列表
+        let mut stacks = Vec::new();
+        for (stack_name, stack_service_list) in stack_services {
+            let service_count = stack_service_list.len() as u32;
+            let container_count = stack_service_list.iter().map(|s| s.replicas).sum();
+            
+            stacks.push(StackInfo {
+                name: stack_name,
                 status: "running".to_string(),
-                services: 3,
-                containers: 3,
+                services: service_count,
+                containers: container_count,
                 created_at: std::time::SystemTime::now(),
-            },
-            StackInfo {
-                name: "test-stack".to_string(),
-                status: "exited".to_string(),
-                services: 2,
-                containers: 0,
-                created_at: std::time::SystemTime::now(),
-            },
-        ])
+            });
+        }
+        
+        Ok(stacks)
     }
 
     /// 查看堆栈详情
     pub async fn stack_inspect(&self, stack: &str) -> DockerResult<StackInfo> {
-        // 模拟堆栈详情
+        // 获取堆栈中的服务
+        let services = self.stack_services(stack).await?;
+        
+        let service_count = services.len() as u32;
+        let container_count = services.iter().map(|s| s.replicas).sum();
+        
         Ok(StackInfo {
             name: stack.to_string(),
             status: "running".to_string(),
-            services: 3,
-            containers: 3,
+            services: service_count,
+            containers: container_count,
             created_at: std::time::SystemTime::now(),
         })
     }
 
     /// 删除堆栈
     pub async fn stack_rm(&mut self, stack: &str) -> DockerResult<()> {
-        // 模拟堆栈删除
+        // 获取堆栈中的服务
+        let services = self.stack_services(stack).await?;
+        
+        // 删除服务
+        for service in services {
+            let _ = self.remove_service(&service.id).await;
+        }
+        
+        // 删除网络和卷（这里简化处理，实际需要更复杂的逻辑）
+        
         Ok(())
     }
 
     /// 列出堆栈中的服务
     pub async fn stack_services(&self, stack: &str) -> DockerResult<Vec<docker_types::ServiceInfo>> {
-        // 模拟堆栈服务列表
-        Ok(vec![
-            docker_types::ServiceInfo {
-                id: "service-1".to_string(),
-                name: "web".to_string(),
-                status: docker_types::ServiceStatus::Running,
-                image: "nginx:latest".to_string(),
-                replicas: 1,
-                ports: std::collections::HashMap::from([(80, 80)]),
-                environment: std::collections::HashMap::new(),
-                volumes: vec![],
-                created_at: std::time::SystemTime::now(),
-                updated_at: std::time::SystemTime::now(),
-            },
-            docker_types::ServiceInfo {
-                id: "service-2".to_string(),
-                name: "db".to_string(),
-                status: docker_types::ServiceStatus::Running,
-                image: "postgres:latest".to_string(),
-                replicas: 1,
-                ports: std::collections::HashMap::from([(5432, 5432)]),
-                environment: std::collections::HashMap::from([("POSTGRES_PASSWORD".to_string(), "secret".to_string())]),
-                volumes: vec![],
-                created_at: std::time::SystemTime::now(),
-                updated_at: std::time::SystemTime::now(),
-            },
-        ])
+        // 获取所有服务
+        let services = self.list_services().await?;
+        
+        // 过滤出属于该堆栈的服务
+        let stack_services = services
+            .into_iter()
+            .filter(|s| s.name.starts_with(&format!("{}_", stack)))
+            .collect();
+        
+        Ok(stack_services)
     }
 
     // 用户管理相关方法

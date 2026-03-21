@@ -5,6 +5,7 @@
 //! 包含 Docker 相关的所有数据结构定义，供其他组件使用。
 
 pub mod errors;
+pub mod compose;
 
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::SystemTime};
@@ -424,6 +425,25 @@ pub struct ServiceInfo {
     pub volumes: Vec<VolumeMount>,
     /// 创建时间
     pub created_at: SystemTime,
+    /// 更新时间
+    pub updated_at: SystemTime,
+    /// 服务版本
+    pub version: u64,
+    /// 更新配置
+    pub update_config: Option<UpdateConfig>,
+    /// 历史版本
+    pub history: Vec<ServiceVersionInfo>,
+}
+
+/// 服务版本信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceVersionInfo {
+    /// 版本号
+    pub version: u64,
+    /// 镜像名称
+    pub image: String,
+    /// 副本数
+    pub replicas: u32,
     /// 更新时间
     pub updated_at: SystemTime,
 }
