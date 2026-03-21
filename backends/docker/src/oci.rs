@@ -7,6 +7,7 @@
 
 use std::{fs, path::Path};
 
+use serde::{Deserialize, Serialize};
 use docker_types::{DockerError, Result};
 
 /// OCI 运行时配置
@@ -320,7 +321,8 @@ impl OciRuntime {
     pub fn stop(&self, container_id: &str, timeout: Option<u32>) -> Result<()> {
         let mut args = vec!["stop"];
         if let Some(timeout) = timeout {
-            args.extend(&["--timeout", &timeout.to_string()]);
+            let timeout_str = timeout.to_string();
+            args.extend(&["--timeout", &timeout_str]);
         }
         args.push(container_id);
 

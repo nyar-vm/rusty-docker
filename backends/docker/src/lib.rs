@@ -437,7 +437,7 @@ impl RustyDocker {
         image: Option<String>,
         replicas: Option<u32>,
     ) -> DockerResult<docker_types::ServiceInfo> {
-        self.swarm_manager.update_service(service, image, replicas).await
+        self.swarm_manager.update_service(service, image, replicas, None).await
     }
 
     /// 删除 Swarm 服务
