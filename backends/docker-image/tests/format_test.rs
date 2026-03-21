@@ -17,3 +17,10 @@ fn test_parse_image_reference() {
         assert_eq!(tag, expected.2);
     }
 }
+
+#[test]
+fn test_calculate_digest() {
+    let data = b"test data";
+    let digest = calculate_digest(data);
+    assert!(digest.starts_with("sha256:"));
+}
