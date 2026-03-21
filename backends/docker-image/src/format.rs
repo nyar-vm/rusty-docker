@@ -6,6 +6,7 @@
 
 use std::{collections::HashMap, fs, path::Path};
 
+use serde::{Serialize, Deserialize};
 use docker_types::{DockerError, Result};
 
 /// 镜像清单
@@ -294,10 +295,9 @@ pub fn parse_image_reference(ref_str: &str) -> Result<(String, String, String)> 
     }
 
     // 提取标签
-    if let Some((repo, t)) = repository.split_once(':') {
-        repository = repo.to_string();
-        tag = t.to_string();
-    }
+    let (repo, t) = repository.split_once(':').unwrap_or((&repository, "latest"));
+    let repository = repo.to_string();
+    let tag = t.to_string();
 
     Ok((registry, repository, tag))
 }

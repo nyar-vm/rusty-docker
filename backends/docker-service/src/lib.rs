@@ -764,8 +764,8 @@ impl ServiceDiscoveryManager {
     async fn perform_http_health_check(instance: &ServiceInstance, health_check_path: &str) -> bool {
         let url = format!("http://{}{}", instance.address, health_check_path);
 
-        match reqwest::Client::new().get(&url).timeout(std::time::Duration::from_secs(5)).send().await {
-            Ok(response) => response.status().is_success(),
+        match wae_request::get(&url).send().await {
+            Ok(response) => response.is_success(),
             Err(_) => false,
         }
     }
@@ -1015,21 +1015,15 @@ impl ServiceManagerImpl {
 
     /// 执行 HTTP 服务调用
     async fn perform_http_service_call(instance: &ServiceInstance, request: Vec<u8>) -> Result<Vec<u8>> {
-        let client = reqwest::Client::new();
         let url = format!("http://{}/", instance.address);
 
-        let response = client
-            .post(&url)
+        let response = wae_request::post(&url)
             .body(request)
-            .timeout(std::time::Duration::from_secs(10))
             .send()
             .await
             .map_err(|e| DockerError::internal(format!("HTTP service call failed: {}", e)))?;
 
-        let response_body =
-            response.bytes().await.map_err(|e| DockerError::internal(format!("Failed to read HTTP response: {}", e)))?;
-
-        Ok(response_body.to_vec())
+        Ok(response.body)
     }
 
     /// 执行 TCP 服务调用

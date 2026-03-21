@@ -17,4 +17,4 @@ chrono = { workspace = true }
 redis = { workspace = true }
 hashbrown = { workspace = true }
 rand = { workspace = true }
-reqwest = { workspace = true }
+wae-request = { workspace = true }

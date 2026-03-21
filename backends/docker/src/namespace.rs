@@ -152,11 +152,6 @@ impl NamespaceManager {
         Self::new("./rusty-docker/namespaces")
     }
 
-    /// 创建新的命名空间管理器（无参数版本）
-    pub fn new() -> Result<Self> {
-        Self::default()
-    }
-
     /// 获取命名空间存储路径
     pub fn base_path(&self) -> &Path {
         &self.base_path
