@@ -44,7 +44,7 @@ pub struct ContainerRuntime {
 impl ContainerRuntime {
     /// 创建新的容器运行时
     pub fn new(storage: Arc<StorageService>) -> Result<Self> {
-        let namespace_manager = NamespaceManager::new()?;
+        let namespace_manager = NamespaceManager::default()?;
         let cgroup_manager = CgroupManager::new()?;
         let oci_runtime = OciRuntime::default();
 
