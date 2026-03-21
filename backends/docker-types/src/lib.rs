@@ -449,7 +449,7 @@ pub struct ServiceVersionInfo {
 }
 
 /// Swarm 节点角色
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NodeRole {
     /// 管理节点
     Manager,

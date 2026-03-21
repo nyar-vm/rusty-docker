@@ -631,9 +631,9 @@ impl SwarmManager {
     /// 列出 Swarm 服务
     pub async fn list_services(&self) -> DockerResult<Vec<ServiceInfo>> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         let state = self.state.read().unwrap();
@@ -643,9 +643,9 @@ impl SwarmManager {
     /// 查看 Swarm 服务详情
     pub async fn inspect_service(&self, service_id: &str) -> DockerResult<ServiceInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         let state = self.state.read().unwrap();
@@ -666,16 +666,16 @@ impl SwarmManager {
         update_config: Option<UpdateConfig>,
     ) -> DockerResult<ServiceInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can update services".to_string()));
+            return Err(DockerError::internal("Only managers can update services"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -734,16 +734,16 @@ impl SwarmManager {
     /// 删除 Swarm 服务
     pub async fn remove_service(&self, service_id: &str) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can remove services".to_string()));
+            return Err(DockerError::internal("Only managers can remove services"));
         }
 
         let mut state = self.state.write().unwrap();
