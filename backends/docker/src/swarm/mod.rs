@@ -148,8 +148,8 @@ impl SwarmManager {
         state.subnet_size = subnet_size;
 
         // 更新本地节点信息
-        *self.local_node.lock().await = Some(local_node.clone());
-        *self.in_swarm.lock().await = true;
+        *self.local_node.lock().unwrap() = Some(local_node.clone());
+        *self.in_swarm.lock().unwrap() = true;
 
         // 广播集群状态变化事件
         self.tx.send(SwarmEvent::ClusterStateChange(state.clone())).unwrap();
@@ -392,7 +392,7 @@ impl SwarmManager {
                 node.role = match role.as_str() {
                     "manager" => NodeRole::Manager,
                     "worker" => NodeRole::Worker,
-                    _ => return Err(DockerError::swarm_error(format!("Invalid role: {}", role))),
+                    _ => return Err(DockerError::internal(format!("Invalid role: {}", role))),
                 };
             }
             if let Some(availability) = availability {
@@ -400,7 +400,7 @@ impl SwarmManager {
                     "active" => NodeAvailability::Active,
                     "pause" => NodeAvailability::Pause,
                     "drain" => NodeAvailability::Drain,
-                    _ => return Err(DockerError::swarm_error(format!("Invalid availability: {}", availability))),
+                    _ => return Err(DockerError::internal(format!("Invalid availability: {}", availability))),
                 };
             }
             state.managers[index] = node.clone();
@@ -412,7 +412,7 @@ impl SwarmManager {
                 node.role = match role.as_str() {
                     "manager" => NodeRole::Manager,
                     "worker" => NodeRole::Worker,
-                    _ => return Err(DockerError::swarm_error(format!("Invalid role: {}", role))),
+                    _ => return Err(DockerError::internal(format!("Invalid role: {}", role))),
                 };
             }
             if let Some(availability) = availability {
@@ -420,7 +420,7 @@ impl SwarmManager {
                     "active" => NodeAvailability::Active,
                     "pause" => NodeAvailability::Pause,
                     "drain" => NodeAvailability::Drain,
-                    _ => return Err(DockerError::swarm_error(format!("Invalid availability: {}", availability))),
+                    _ => return Err(DockerError::internal(format!("Invalid availability: {}", availability))),
                 };
             }
             state.workers[index] = node.clone();
