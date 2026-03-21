@@ -892,7 +892,7 @@ impl ServiceDiscovery for ServiceDiscoveryManager {
         let mut service_cache = self.service_cache.write().await;
 
         // 清理过期的缓存
-        self.cleanup_expired_cache(&mut service_cache).await;
+        Self::cleanup_expired_cache(&mut service_cache);
 
         if let Some((service_info, expires_at)) = service_cache.get(service_name) {
             if expires_at > &Utc::now() {
@@ -917,9 +917,9 @@ impl ServiceDiscovery for ServiceDiscoveryManager {
     }
 
     /// 清理过期的缓存
-    async fn cleanup_expired_cache(&self, service_cache: &mut HashMap<String, (ServiceInfo, DateTime<Utc>)>) {
+    fn cleanup_expired_cache(service_cache: &mut HashMap<String, (ServiceInfo, DateTime<Utc>)>) {
         let now = Utc::now();
-        service_cache.retain(|_, (_, expires_at)| expires_at > &now);
+        service_cache.retain(|_, (_, expires_at)| *expires_at > now);
     }
 
     async fn list_services(&self) -> Result<Vec<ServiceInfo>> {

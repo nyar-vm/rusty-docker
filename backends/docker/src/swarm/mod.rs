@@ -218,8 +218,8 @@ impl SwarmManager {
         state.updated_at = SystemTime::now();
 
         // 更新本地节点信息
-        *self.local_node.lock().await = Some(local_node.clone());
-        *self.in_swarm.lock().await = true;
+        *self.local_node.lock().unwrap() = Some(local_node.clone());
+        *self.in_swarm.lock().unwrap() = true;
 
         // 广播集群状态变化事件
         self.tx.send(SwarmEvent::ClusterStateChange(state.clone())).unwrap();
@@ -242,8 +242,8 @@ impl SwarmManager {
         // 检查是否是最后一个管理节点
         let state = self.state.read().unwrap();
         if state.managers.len() == 1 && state.managers[0].id == node_id && !force {
-            return Err(DockerError::swarm_error(
-                "This is the last manager in the swarm. Use --force to remove it".to_string(),
+            return Err(DockerError::internal(
+                "This is the last manager in the swarm. Use --force to remove it",
             ));
         }
 
@@ -258,8 +258,8 @@ impl SwarmManager {
         state.updated_at = SystemTime::now();
 
         // 重置本地节点信息
-        *self.local_node.lock().await = None;
-        *self.in_swarm.lock().await = false;
+        *self.local_node.lock().unwrap() = None;
+        *self.in_swarm.lock().unwrap() = false;
 
         // 广播节点离开事件
         self.tx.send(SwarmEvent::NodeLeave(node_id)).unwrap();
@@ -271,9 +271,9 @@ impl SwarmManager {
     /// 获取 Swarm 集群信息
     pub async fn info(&self) -> DockerResult<SwarmInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         let state = self.state.read().unwrap();
@@ -297,16 +297,16 @@ impl SwarmManager {
         subnet_size: Option<u8>,
     ) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can update the swarm".to_string()));
+            return Err(DockerError::internal("Only managers can update the swarm"));
         }
 
         // 更新集群状态
@@ -331,9 +331,9 @@ impl SwarmManager {
     /// 列出 Swarm 节点
     pub async fn list_nodes(&self) -> DockerResult<Vec<NodeInfo>> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         let state = self.state.read().unwrap();
@@ -345,9 +345,9 @@ impl SwarmManager {
     /// 查看 Swarm 节点详情
     pub async fn inspect_node(&self, node_id: &str) -> DockerResult<NodeInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         let state = self.state.read().unwrap();
@@ -370,16 +370,16 @@ impl SwarmManager {
         availability: Option<String>,
     ) -> DockerResult<NodeInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can update nodes".to_string()));
+            return Err(DockerError::internal("Only managers can update nodes"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -441,16 +441,16 @@ impl SwarmManager {
     /// 提升节点为 manager
     pub async fn promote_node(&self, node_id: &str) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can promote nodes".to_string()));
+            return Err(DockerError::internal("Only managers can promote nodes"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -476,23 +476,23 @@ impl SwarmManager {
     /// 降级节点为 worker
     pub async fn demote_node(&self, node_id: &str) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can demote nodes".to_string()));
+            return Err(DockerError::internal("Only managers can demote nodes"));
         }
 
         let mut state = self.state.write().unwrap();
 
         // 检查是否是最后一个管理节点
         if state.managers.len() == 1 && state.managers[0].id == node_id {
-            return Err(DockerError::swarm_error("Cannot demote the last manager in the swarm".to_string()));
+            return Err(DockerError::internal("Cannot demote the last manager in the swarm"));
         }
 
         // 查找并降级节点
@@ -516,16 +516,16 @@ impl SwarmManager {
     /// 删除 Swarm 节点
     pub async fn remove_node(&self, node_id: &str) -> DockerResult<()> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can remove nodes".to_string()));
+            return Err(DockerError::internal("Only managers can remove nodes"));
         }
 
         let mut state = self.state.write().unwrap();
@@ -535,7 +535,7 @@ impl SwarmManager {
         if let Some(index) = state.managers.iter().position(|n| n.id == node_id) {
             // 检查是否是最后一个管理节点
             if state.managers.len() == 1 {
-                return Err(DockerError::swarm_error("Cannot remove the last manager in the swarm".to_string()));
+                return Err(DockerError::internal("Cannot remove the last manager in the swarm"));
             }
             state.managers.remove(index);
             node_removed = true;
@@ -569,16 +569,16 @@ impl SwarmManager {
         mount: Vec<String>,
     ) -> DockerResult<ServiceInfo> {
         // 检查是否在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if !in_swarm {
-            return Err(DockerError::swarm_error("Node is not in a swarm".to_string()));
+            return Err(DockerError::internal("Node is not in a swarm"));
         }
 
         // 检查是否是管理节点
-        let local_node = self.local_node.lock().await;
+        let local_node = self.local_node.lock().unwrap();
         let is_manager = local_node.as_ref().map(|n| n.role == NodeRole::Manager).unwrap_or(false);
         if !is_manager {
-            return Err(DockerError::swarm_error("Only managers can create services".to_string()));
+            return Err(DockerError::internal("Only managers can create services"));
         }
 
         // 解析端口映射
