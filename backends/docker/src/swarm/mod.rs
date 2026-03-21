@@ -113,9 +113,9 @@ impl SwarmManager {
         subnet_size: u8,
     ) -> DockerResult<()> {
         // 检查是否已经在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if in_swarm && !force_new_cluster {
-            return Err(DockerError::swarm_error("Node is already in a swarm".to_string()));
+            return Err(DockerError::internal("Node is already in a swarm"));
         }
 
         // 生成集群 ID
@@ -167,14 +167,14 @@ impl SwarmManager {
         manager_addr: Option<String>,
     ) -> DockerResult<()> {
         // 检查是否已经在 Swarm 集群中
-        let in_swarm = *self.in_swarm.lock().await;
+        let in_swarm = *self.in_swarm.lock().unwrap();
         if in_swarm {
-            return Err(DockerError::swarm_error("Node is already in a swarm".to_string()));
+            return Err(DockerError::internal("Node is already in a swarm"));
         }
 
         // 验证 token
         if token.is_empty() {
-            return Err(DockerError::swarm_error("Invalid join token".to_string()));
+            return Err(DockerError::internal("Invalid join token"));
         }
 
         // 确定节点角色（基于 token 类型）
