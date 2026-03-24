@@ -12,7 +12,7 @@
         "fmt": "biome format --write && cargo fmt --all",
         "push": "git push && git push --tags --prune",
         "reset": "git reset HEAD~ --soft",
-        "u": "cargo upgrade --incompatible",
+        "u": "cargo upgrade --pinned",
         "p": "cargo workspace publish --resume",
         "lint": "biome check",
         "lint:fix": "biome check --write",
