@@ -7,7 +7,6 @@ authors = { workspace = true }
 description = "Docker service management module for Rusty Docker"
 repository = "https://github.com/rusty-docker/rusty-docker"
 homepage = "https://github.com/rusty-docker/rusty-docker"
-readme = "README.md"
 keywords = ["docker", "service", "management"]
 categories = ["containers", "network-programming"]
 
