@@ -361,7 +361,7 @@ enum StackCommands {
 /// 加载并解析 Compose 文件
 fn load_compose_file(
     paths: &[String],
-) -> Result<(Vec<compose::compose::ComposeService>, Vec<compose::compose::NetworkConfig>, Vec<compose::compose::VolumeConfig>)>
+) -> Result<(Vec<compose::ComposeService>, Vec<compose::NetworkConfig>, Vec<compose::VolumeConfig>)>
 {
     // 合并多个 Compose 文件
     let merged_config = compose::merge_compose_files(paths)?;
